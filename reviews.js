@@ -539,7 +539,7 @@ function renderReviewCards(reviews) {
     if (review.menu_item_name) {
       menuBadge = document.createElement("div");
       menuBadge.className = "review-menu-badge";
-      menuBadge.textContent = `🥟 ${review.menu_item_name}`;
+      menuBadge.textContent = review.menu_item_name;
     }
 
     // Comment Text: Rendered safely with textContent to avoid XSS
@@ -595,7 +595,7 @@ const RATING_LABELS = {
   2: "2 — Cukup",
   3: "3 — Lumayan Enak",
   4: "4 — Sangat Enak!",
-  5: "5 — Luar Biasa Lezat! 🥟"
+  5: "5 — Luar Biasa Lezat!"
 };
 
 function initStarRatingSelector() {

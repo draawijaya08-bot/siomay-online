@@ -131,28 +131,28 @@ Untuk langsung melihat dan menguji seluruh tampilan dan fitur dashboard admin:
 ### Langkah Masuk:
 1. Buka `http://localhost:5173/admin` pada browser Anda.
 2. Anda akan diarahkan ke halaman login pemilik.
-3. Masukkan kredensial owner resmi atau klik **⚡ Masuk Cepat Akun Demo (1-Klik)**.
+3. Masukkan kredensial owner resmi atau klik **Masuk Cepat Akun Demo (1-Klik)**.
 4. Masuk ke Dashboard CMS:
-   - **📊 Ringkasan**: Melihat statistik total menu, kontak WhatsApp, serta ulasan masuk.
-   - **🥟 Kelola Menu**:
+   - **Ringkasan**: Melihat statistik total menu, kontak WhatsApp, serta ulasan masuk.
+   - **Kelola Menu**:
      - Klik **+ Tambah Menu Baru** untuk menambah produk.
-     - Klik tombol **Pilih Foto Baru** untuk mengunggah gambar langsung ke Supabase Storage.
+     - Klik tombol **Pilih Foto Baru** untuk mengunggah gambar produk (otomatis terhubung ke Supabase Storage, atau ke buffer Base64 Data URL jika Supabase belum terhubung).
      - Klik **Tandai Habis / Tersedia** untuk mengubah status stok secara langsung.
-     - Klik **✏️ Edit** untuk mengubah harga atau deskripsi.
-     - Klik **🗑️ Hapus** untuk menghapus menu setelah konfirmasi.
-   - **🖼️ Banner & Video**:
+     - Klik **Edit** untuk mengubah harga, porsi, atau deskripsi.
+     - Klik **Hapus** untuk menghapus menu setelah konfirmasi.
+   - **Banner & Video**:
      - Edit headline hero banner dan teks tombol.
      - Unggah foto hero banner pengganti.
      - Unggah video promosi (MP4/WebM) atau masukkan tautan video.
      - Klik **Simpan Pengaturan Konten**.
-   - **💬 WhatsApp & Pesanan**:
+   - **WhatsApp & Pesanan**:
      - Perbarui nomor WhatsApp pemesanan toko.
      - Uji coba link WhatsApp langsung dari tombol preview.
      - Klik **Simpan Nomor WhatsApp**. Perubahan nomor akan langsung aktif di seluruh tombol pemesanan dan checkout keranjang belanja website publik!
-   - **⭐ Ulasan Pelanggan**:
+   - **Ulasan Pelanggan**:
      - Memoderasi ulasan yang dikirim pembeli dari beranda publik.
-     - Klik **✓ Setujui** agar ulasan tampil di beranda, **✕ Tolak**, atau **🗑️ Hapus**.
-5. Klik **Keluar (Logout)** di bagian bawah sidebar untuk mengakhiri sesi admin.
+     - Klik **Setujui** agar ulasan tampil di beranda, **Tolak**, atau **Hapus**.
+5. Klik **Keluar** di bagian bawah sidebar untuk mengakhiri sesi admin.
 
 ---
 

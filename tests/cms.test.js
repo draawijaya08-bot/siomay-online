@@ -137,6 +137,101 @@ console.log("\nTest 5: Demo Admin Authentication & Session...");
   console.log("✓ Demo admin authentication functions reliably.");
 }
 
+// -----------------------------------------------------------------------------
+// Test 6: Media Upload Buffer Resilience (uploadMediaFile)
+// -----------------------------------------------------------------------------
+console.log("\nTest 6: Media Upload Buffer Resilience (Offline / Unconnected Supabase)...");
+{
+  const { uploadMediaFile } = await import("../cmsService.js");
+
+  // A. Format validation
+  const badFile = { name: "malicious.exe", type: "application/x-msdownload", size: 1024 };
+  const resBad = await uploadMediaFile(badFile, "menu");
+  assert.equal(resBad.success, false, "Disallows unsupported file extensions");
+
+  // B. Size limit validation (> 5MB)
+  const hugeFile = { name: "huge.jpg", type: "image/jpeg", size: 6 * 1024 * 1024 };
+  const resHuge = await uploadMediaFile(hugeFile, "menu");
+  assert.equal(resHuge.success, false, "Disallows files exceeding 5MB");
+
+  // C. Valid file offline buffer fallback
+  const validFile = { 
+    name: "siomay-spesial.jpg", 
+    type: "image/jpeg", 
+    size: 50 * 1024,
+    arrayBuffer: async () => Buffer.from("fake-image-bytes")
+  };
+  const resValid = await uploadMediaFile(validFile, "menu");
+  assert.equal(resValid.success, true, "Upload must succeed with offline Data URL fallback");
+  assert.ok(resValid.url, "Must return an image URL");
+  assert.ok(resValid.isLocal, "Must indicate local buffer mode when Supabase is unconfigured");
+
+  console.log("✓ Media upload validates types, size limits, and successfully converts to safe data URL buffer.");
+}
+
+// -----------------------------------------------------------------------------
+// Test 7: Food Menu Items Offline Persistence & CRUD
+// -----------------------------------------------------------------------------
+console.log("\nTest 7: Food Menu CRUD & Local Persistence Buffer...");
+{
+  const { 
+    fetchAllMenuItems, 
+    createMenuItem, 
+    updateMenuItem, 
+    deleteMenuItem,
+    getLocalMenuItems,
+    saveLocalMenuItems 
+  } = await import("../cmsService.js");
+
+  // 1. Initial list has at least default items
+  const initial = await fetchAllMenuItems();
+  assert.equal(initial.success, true);
+  assert.ok(initial.items.length >= 4, "Initial menu items must exist");
+
+  // 2. Add new menu item
+  const newProductPayload = {
+    name: "Siomay Telur Asin Gurih",
+    price: 28000,
+    description: "Siomay premium isi telur asin gurih melimpah bumbu kacang.",
+    image_url: "data:image/jpeg;base64,samplebase64",
+    portion: "Porsi 5 pcs",
+    rating: 5.0,
+    is_best_seller: true,
+    is_available: true
+  };
+
+  const createRes = await createMenuItem(newProductPayload);
+  assert.equal(createRes.success, true, "Create menu item must succeed");
+  assert.ok(createRes.item.id, "Must generate an ID");
+  assert.equal(createRes.item.name, "Siomay Telur Asin Gurih");
+
+  // 3. Verify it is now present in fetchAllMenuItems
+  const afterAdd = await fetchAllMenuItems();
+  const found = afterAdd.items.find(i => i.name === "Siomay Telur Asin Gurih");
+  assert.ok(found, "Newly added menu item must be present in menu list");
+  assert.equal(found.price, 28000);
+
+  // 4. Update the menu item
+  const updateRes = await updateMenuItem(found.id, {
+    ...found,
+    price: 30000,
+    is_available: false
+  });
+  assert.equal(updateRes.success, true, "Update menu item must succeed");
+  assert.equal(updateRes.item.price, 30000);
+  assert.equal(updateRes.item.is_available, false);
+
+  // 5. Delete the created item
+  const deleteRes = await deleteMenuItem(found.id);
+  assert.equal(deleteRes.success, true, "Delete menu item must succeed");
+
+  const afterDelete = await fetchAllMenuItems();
+  const deletedFound = afterDelete.items.find(i => i.id === found.id);
+  assert.equal(deletedFound, undefined, "Deleted item must no longer exist");
+
+  console.log("✓ Menu item Create, Read, Update, Delete (CRUD) works flawlessly with local persistence.");
+}
+
 console.log("\n=======================================================");
 console.log("ALL COMPLETE ADMIN CMS TESTS PASSED (100% OK)");
 console.log("=======================================================");

@@ -59,14 +59,18 @@
 
         <!-- Quick Demo Account Access Box -->
         <div class="cms-demo-box">
-          <div class="demo-box-badge">👑 Akun Khusus Demo Admin</div>
+          <div class="demo-box-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Akun Khusus Demo Admin</span>
+          </div>
           <p class="demo-box-desc">Gunakan akun demo berikut untuk langsung melihat seluruh isi dashboard & fitur moderasi:</p>
           <div class="demo-credentials-pill">
             <span>Email: <strong>admin@siomayonline.com</strong></span>
             <span>Password: <strong>admin123</strong></span>
           </div>
           <button type="button" class="btn btn-secondary btn-full btn-demo-action" id="btnQuickDemoLogin">
-            <span>⚡ Masuk Cepat Akun Demo (1-Klik)</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Masuk Cepat Akun Demo (1-Klik)</span>
           </button>
         </div>
       </form>
@@ -74,7 +78,7 @@
       <div class="cms-auth-footer">
         <a href="/" class="cms-back-link">← Kembali ke Website Publik</a>
         <div class="cms-auth-hint">
-          <span>ℹ️ Akun owner diotorisasi via tabel <code>admin_users</code> di Supabase.</span>
+          <span>Otorisasi akun via tabel <code>admin_users</code> di database.</span>
         </div>
       </div>
     </div>
@@ -100,23 +104,33 @@
 
       <nav class="cms-nav" aria-label="Menu CMS">
         <button type="button" class="cms-nav-item active" data-target-view="viewOverview">
-          <span class="nav-icon" aria-hidden="true">📊</span>
+          <span class="nav-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          </span>
           <span>Ringkasan</span>
         </button>
         <button type="button" class="cms-nav-item" data-target-view="viewMenu">
-          <span class="nav-icon" aria-hidden="true">🥟</span>
+          <span class="nav-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+          </span>
           <span>Kelola Menu</span>
         </button>
         <button type="button" class="cms-nav-item" data-target-view="viewContent">
-          <span class="nav-icon" aria-hidden="true">🖼️</span>
+          <span class="nav-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+          </span>
           <span>Banner & Video</span>
         </button>
         <button type="button" class="cms-nav-item" data-target-view="viewWhatsApp">
-          <span class="nav-icon" aria-hidden="true">💬</span>
+          <span class="nav-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          </span>
           <span>WhatsApp & Pesanan</span>
         </button>
         <button type="button" class="cms-nav-item" data-target-view="viewReviews">
-          <span class="nav-icon" aria-hidden="true">⭐</span>
+          <span class="nav-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </span>
           <span>Ulasan Pelanggan</span>
           <span class="cms-nav-badge" id="sidebarPendingReviewsBadge" style="display: none;">0</span>
         </button>
@@ -124,7 +138,9 @@
 
       <div class="cms-sidebar-footer">
         <div class="cms-user-pill">
-          <span class="user-avatar" aria-hidden="true">👑</span>
+          <span class="user-avatar" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
           <div class="user-info">
             <span class="user-role">Pemilik (Owner)</span>
             <span class="user-email" id="sidebarUserEmail">owner@siomay.com</span>
@@ -132,10 +148,12 @@
         </div>
         <div class="cms-sidebar-actions">
           <a href="/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm btn-full">
-            <span>🌐 Website Publik</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span>Website Publik</span>
           </a>
           <button type="button" class="btn btn-secondary btn-sm btn-full btn-logout" id="btnOwnerLogout">
-            <span>🚪 Keluar</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Keluar</span>
           </button>
         </div>
       </div>
@@ -181,35 +199,44 @@
               <p class="view-desc">Status menu makanan, kontak WhatsApp, dan aktivitas pelanggan Siomay Online.</p>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshOverview">
-              <span>🔄 Segarkan Data</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Segarkan Data</span>
             </button>
           </div>
 
           <!-- Metric Cards -->
           <div class="cms-metrics-grid">
             <div class="cms-metric-card">
-              <span class="metric-icon">🥟</span>
+              <span class="metric-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+              </span>
               <div class="metric-info">
                 <span class="metric-label">Total Menu Makanan</span>
                 <strong class="metric-val" id="metricTotalMenu">0</strong>
               </div>
             </div>
             <div class="cms-metric-card">
-              <span class="metric-icon">💬</span>
+              <span class="metric-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              </span>
               <div class="metric-info">
                 <span class="metric-label">WhatsApp Pemesanan</span>
                 <strong class="metric-val text-sm" id="metricWhatsApp">628XXXXXXXXXX</strong>
               </div>
             </div>
             <div class="cms-metric-card">
-              <span class="metric-icon">⭐</span>
+              <span class="metric-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </span>
               <div class="metric-info">
                 <span class="metric-label">Ulasan Menunggu Tinjauan</span>
                 <strong class="metric-val text-orange" id="metricPendingReviews">0</strong>
               </div>
             </div>
             <div class="cms-metric-card">
-              <span class="metric-icon">✓</span>
+              <span class="metric-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </span>
               <div class="metric-info">
                 <span class="metric-label">Ulasan Disetujui</span>
                 <strong class="metric-val text-green" id="metricApprovedReviews">0</strong>
@@ -311,7 +338,8 @@
                 <div class="media-upload-controls">
                   <input type="file" id="heroImageFileInput" accept="image/jpeg,image/png,image/webp,image/avif" class="file-input-hidden">
                   <button type="button" class="btn btn-secondary btn-sm" id="btnUploadHeroImage">
-                    <span>📁 Unggah Foto Baru</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Unggah Foto Baru</span>
                   </button>
                   <span class="file-hint">Maksimal 5MB (JPG, PNG, WebP).</span>
                   <input type="text" id="settingHeroImageUrl" class="form-input text-xs" placeholder="/images/hero.jpg">
@@ -330,7 +358,8 @@
                 <input type="url" id="settingPromoVideoUrl" class="form-input" placeholder="https://... atau unggah file video">
                 <input type="file" id="promoVideoFileInput" accept="video/mp4,video/webm" class="file-input-hidden">
                 <button type="button" class="btn btn-secondary btn-sm" id="btnUploadPromoVideo">
-                  <span>🎥 Unggah Video</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                  <span>Unggah Video</span>
                 </button>
               </div>
               <span class="file-hint">Format didukung: MP4 atau WebM (Maksimal 50MB).</span>
@@ -392,7 +421,8 @@
               <code id="previewWaLinkDisplay">https://wa.me/628XXXXXXXXXX</code>
               <div class="mt-2">
                 <a href="#" id="btnTestWaLink" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
-                  <span>📱 Uji Coba Buka Link WhatsApp</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  <span>Uji Coba Link WhatsApp</span>
                 </a>
               </div>
             </div>
@@ -417,7 +447,8 @@
               <p class="view-desc">Ulasan yang dikirim oleh pelanggan dari website publik. Hanya ulasan yang berstatus 'Disetujui' yang akan tampil di halaman depan.</p>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshReviews">
-              <span>🔄 Segarkan Ulasan</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Segarkan Ulasan</span>
             </button>
           </div>
 
@@ -515,7 +546,8 @@
             <div class="media-upload-controls">
               <input type="file" id="menuItemFileInput" accept="image/jpeg,image/png,image/webp,image/avif" class="file-input-hidden">
               <button type="button" class="btn btn-secondary btn-sm" id="btnUploadMenuImage">
-                <span>📁 Pilih Foto Baru</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span>Pilih Foto Baru</span>
               </button>
               <span class="file-hint">Maksimal 5MB (JPG, PNG, WebP).</span>
               <input type="text" id="menuItemImageUrl" class="form-input text-xs" placeholder="/images/menu-original.jpg">

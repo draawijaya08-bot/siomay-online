@@ -118,6 +118,7 @@ function initAuthHandlers() {
         return;
       }
 
+      currentOwner = res.user;
       await checkAuthSession();
       showToast("Selamat datang kembali di Admin CMS Siomay Online!", "success");
     });
@@ -148,6 +149,7 @@ function initAuthHandlers() {
       btnQuickDemo.innerHTML = `<span>⚡ Masuk Cepat Akun Demo (1-Klik)</span>`;
 
       if (res.success) {
+        currentOwner = res.user;
         await checkAuthSession();
         showToast("Berhasil masuk! Selamat datang di dashboard Admin Demo Siomay Online.", "success");
       } else {
@@ -347,14 +349,17 @@ function initMenuHandlers() {
 
       if (btnUpload) {
         btnUpload.disabled = true;
-        btnUpload.textContent = "Mengunggah...";
+        btnUpload.innerHTML = `<span>Mengunggah...</span>`;
       }
 
       const res = await uploadMediaFile(file, "menu");
 
       if (btnUpload) {
         btnUpload.disabled = false;
-        btnUpload.textContent = "📁 Pilih Foto Baru";
+        btnUpload.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Pilih Foto Baru</span>
+        `;
       }
 
       if (!res.success) {
@@ -364,7 +369,7 @@ function initMenuHandlers() {
 
       if (urlInput) urlInput.value = res.url;
       if (previewImg) previewImg.src = res.url;
-      showToast("Foto menu berhasil diunggah ke Storage!", "success");
+      showToast(res.isLocal ? "Foto menu berhasil disimpan ke buffer lokal!" : "Foto menu berhasil diunggah ke Storage!", "success");
     });
   }
 
@@ -430,9 +435,9 @@ function renderMenuGrid(items) {
       <div class="menu-card-img-wrap">
         <img src="${item.image_url}" alt="${item.name}" class="menu-thumb" loading="lazy">
         <div class="menu-status-badge ${item.is_available ? 'badge-available' : 'badge-out-of-stock'}">
-          ${item.is_available ? '✓ Tersedia' : '✕ Stok Habis'}
+          ${item.is_available ? 'Tersedia' : 'Stok Habis'}
         </div>
-        ${item.is_best_seller ? '<span class="menu-bestseller-tag">⭐ Best Seller</span>' : ''}
+        ${item.is_best_seller ? '<span class="menu-bestseller-tag">Best Seller</span>' : ''}
       </div>
       <div class="menu-card-details">
         <div class="menu-top-row">
@@ -441,7 +446,7 @@ function renderMenuGrid(items) {
         </div>
         <p class="menu-item-desc">${item.description}</p>
         <div class="menu-meta-row">
-          <span class="meta-portion">📦 ${item.portion || "Porsi Mantap"}</span>
+          <span class="meta-portion">${item.portion || "Porsi Mantap"}</span>
           <span class="meta-rating">★ ${item.rating || "4.9"}</span>
           ${item.badge ? `<span class="meta-badge">${item.badge}</span>` : ''}
         </div>
@@ -451,10 +456,12 @@ function renderMenuGrid(items) {
           </button>
           <div class="action-buttons-group">
             <button type="button" class="btn btn-sm btn-secondary btn-edit-menu" data-id="${item.id}">
-              ✏️ Edit
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span>Edit</span>
             </button>
             <button type="button" class="btn btn-sm btn-danger btn-delete-menu" data-id="${item.id}" data-name="${item.name}">
-              🗑️ Hapus
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span>Hapus</span>
             </button>
           </div>
         </div>
@@ -672,14 +679,17 @@ function initContentHandlers() {
 
       if (btnUploadImg) {
         btnUploadImg.disabled = true;
-        btnUploadImg.textContent = "Mengunggah...";
+        btnUploadImg.innerHTML = `<span>Mengunggah...</span>`;
       }
 
       const res = await uploadMediaFile(file, "banners");
 
       if (btnUploadImg) {
         btnUploadImg.disabled = false;
-        btnUploadImg.textContent = "📁 Unggah Foto Baru";
+        btnUploadImg.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Unggah Foto Baru</span>
+        `;
       }
 
       if (!res.success) {
@@ -689,7 +699,7 @@ function initContentHandlers() {
 
       if (heroUrlInput) heroUrlInput.value = res.url;
       if (heroPreviewImg) heroPreviewImg.src = res.url;
-      showToast("Foto banner berhasil diunggah!", "success");
+      showToast(res.isLocal ? "Foto banner berhasil disimpan ke buffer lokal!" : "Foto banner berhasil diunggah ke Storage!", "success");
     });
   }
 
@@ -713,14 +723,17 @@ function initContentHandlers() {
 
       if (btnUploadVideo) {
         btnUploadVideo.disabled = true;
-        btnUploadVideo.textContent = "Mengunggah Video...";
+        btnUploadVideo.innerHTML = `<span>Mengunggah Video...</span>`;
       }
 
       const res = await uploadMediaFile(file, "videos");
 
       if (btnUploadVideo) {
         btnUploadVideo.disabled = false;
-        btnUploadVideo.textContent = "🎥 Unggah Video";
+        btnUploadVideo.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          <span>Unggah Video</span>
+        `;
       }
 
       if (!res.success) {
@@ -730,7 +743,7 @@ function initContentHandlers() {
 
       if (videoUrlInput) videoUrlInput.value = res.url;
       updateVideoPreview(res.url);
-      showToast("Video promosi berhasil diunggah!", "success");
+      showToast(res.isLocal ? "Video promosi berhasil disimpan ke buffer lokal!" : "Video promosi berhasil diunggah!", "success");
     });
   }
 
@@ -1037,13 +1050,13 @@ function renderReviewsForAdmin() {
       </div>
       <div class="admin-rating-row">
         <div>${renderStarsHtml(review.rating)}</div>
-        ${review.menu_item_name ? `<span class="admin-menu-tag">🥟 ${escapeSafe(review.menu_item_name)}</span>` : ''}
+        ${review.menu_item_name ? `<span class="admin-menu-tag">${escapeSafe(review.menu_item_name)}</span>` : ''}
       </div>
       <p class="admin-comment-text">${escapeSafe(review.comment)}</p>
       <div class="admin-actions-row">
-        ${review.status !== 'approved' ? `<button type="button" class="btn btn-sm btn-approve" data-act="approve" data-id="${review.id}">✓ Setujui</button>` : ''}
-        ${review.status !== 'rejected' ? `<button type="button" class="btn btn-sm btn-reject" data-act="reject" data-id="${review.id}">✕ Tolak</button>` : ''}
-        <button type="button" class="btn btn-sm btn-delete" data-act="delete" data-id="${review.id}">🗑️ Hapus</button>
+        ${review.status !== 'approved' ? `<button type="button" class="btn btn-sm btn-approve" data-act="approve" data-id="${review.id}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> <span>Setujui</span></button>` : ''}
+        ${review.status !== 'rejected' ? `<button type="button" class="btn btn-sm btn-reject" data-act="reject" data-id="${review.id}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> <span>Tolak</span></button>` : ''}
+        <button type="button" class="btn btn-sm btn-delete" data-act="delete" data-id="${review.id}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>Hapus</span></button>
       </div>
     `;
 

@@ -313,6 +313,18 @@ if (typeof document !== "undefined") {
 
     // 2. Fetch live updates from Supabase CMS (Menu, Banner, Promo Video, WhatsApp)
     syncPublicWebsiteFromBackend();
+
+    // 3. Auto-sync on Admin changes (cross-tab storage and local custom events)
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", (e) => {
+        if (e.key === "siomay_menu_items_v2" || e.key === "siomay_site_settings_v1") {
+          syncPublicWebsiteFromBackend();
+        }
+      });
+      window.addEventListener("siomay_menu_updated", () => {
+        syncPublicWebsiteFromBackend();
+      });
+    }
   });
 }
 
@@ -696,7 +708,9 @@ function renderCartDrawerItems(summary) {
   if (summary.itemCount === 0) {
     itemsContainer.innerHTML = `
       <div class="cart-empty-state">
-        <div class="empty-icon" aria-hidden="true">🥟</div>
+        <div class="empty-icon" aria-hidden="true">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        </div>
         <h3 class="empty-title">Keranjang Belanja Masih Kosong</h3>
         <p class="empty-desc">Pilih menu favoritmu dan rasakan gurihnya siomay fresh bumbu kacang khas kami.</p>
         <button type="button" class="btn btn-secondary btn-sm" id="btnExploreMenu">Lihat Menu Favorit</button>
