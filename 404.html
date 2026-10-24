@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+  <!-- Primary Meta Tags -->
+  <title>Siomay Online — Sederhana Rasanya, Susah Dilupakannya</title>
+  <meta name="title" content="Siomay Online — Sederhana Rasanya, Susah Dilupakannya">
+  <meta name="description" content="Siomay fresh dengan bumbu kacang khas, dibuat setiap hari dan siap diantar langsung ke rumahmu. Sederhana rasanya, susah dilupakannya.">
+  <meta name="theme-color" content="#FAF7F2">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://siomayonline.com/">
+  <meta property="og:title" content="Siomay Online — Sederhana Rasanya, Susah Dilupakannya">
+  <meta property="og:description" content="Siomay fresh dengan bumbu kacang khas, dibuat setiap hari dan siap diantar langsung ke rumahmu.">
+  <meta property="og:image" content="./images/hero.jpg">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <link rel="apple-touch-icon" href="./favicon.png">
+  <link rel="shortcut icon" href="./favicon.ico">
+
+  <!-- Google Fonts: Playfair Display (Editorial Display) + Plus Jakarta Sans & Outfit (Modern Sans) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <script type="module" crossorigin src="./assets/index-BD6QLRgm.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-ps8c1yzE.css">
+</head>
+<body>
+
+  <!-- Accessibility Skip Link -->
+  <a href="#main-content" class="skip-to-content">Lewati ke konten utama</a>
+
+  <!-- ========================================================================
+       BUSINESS INFO STRIP (Real Business Signal)
+       ======================================================================== -->
+  <div class="business-strip" id="businessStrip">
+    <div class="container business-strip-inner">
+      <div class="strip-item">
+        <span class="status-indicator" aria-hidden="true"></span>
+        <span class="strip-label">Buka Hari Ini:</span>
+        <strong class="strip-val">10.00 — 21.00 WIB</strong>
+      </div>
+      <div class="strip-separator" aria-hidden="true">•</div>
+      <div class="strip-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        <span class="strip-label">Delivery Area:</span>
+        <strong class="strip-val">Klaten & Sekitarnya</strong>
+      </div>
+      <div class="strip-separator" aria-hidden="true">•</div>
+      <div class="strip-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        <span>100% Ikan Tenggiri • Fresh Setiap Hari</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       NAVBAR
+       ======================================================================== -->
+  <header class="navbar" id="navbar">
+    <div class="container navbar-inner">
+      <a href="#hero" class="brand-logo" aria-label="Siomay Online Beranda">
+        <img src="./images/logo.png" alt="Siomay Online" class="brand-logo-img" width="52" height="52">
+      </a>
+
+      <!-- Desktop Navigation Menu -->
+      <nav class="nav-menu" aria-label="Navigasi Utama">
+        <a href="#hero" class="nav-link active">Home</a>
+        <a href="#menu" class="nav-link">Menu Favorit</a>
+        <a href="#cerita" class="nav-link">Tentang Kami</a>
+        <a href="#proses" class="nav-link">Proses</a>
+        <a href="#keunggulan" class="nav-link">Kenapa Kami</a>
+      </nav>
+
+      <!-- Desktop Action CTA -->
+      <div class="navbar-action">
+        <!-- Cart Trigger Button in Navbar -->
+        <button class="navbar-cart-btn" id="openCartBtn" aria-label="Buka Keranjang Belanja">
+          <span class="cart-btn-icon" aria-hidden="true">🛒</span>
+          <span class="cart-btn-text">Cart</span>
+          <span class="cart-badge" id="cartBadge">0</span>
+        </button>
+
+        <a href="#" class="btn btn-primary btn-sm" data-cta="whatsapp-general">
+          <span>Pesan via WhatsApp</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </a>
+
+        <!-- Mobile Hamburger Button -->
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Buka menu navigasi" aria-expanded="false">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Navigation Drawer Overlay -->
+  <div class="mobile-nav" id="mobileNav" aria-label="Navigasi Mobile">
+    <div class="mobile-nav-header">
+      <a href="#hero" class="brand-logo" aria-label="Siomay Online Beranda">
+        <img src="./images/logo.png" alt="Siomay Online" class="brand-logo-img" width="44" height="44">
+      </a>
+      <button type="button" class="mobile-nav-cart-pill" id="mobileNavCartBtn">
+        <span>🛒 Keranjang</span>
+        <span class="cart-badge">0</span>
+      </button>
+    </div>
+    <div class="mobile-nav-links">
+      <a href="#hero" class="mobile-nav-link">Home</a>
+      <a href="#menu" class="mobile-nav-link">Menu Favorit</a>
+      <a href="#cerita" class="mobile-nav-link">Tentang Kami</a>
+      <a href="#proses" class="mobile-nav-link">Proses & Kualitas</a>
+      <a href="#keunggulan" class="mobile-nav-link">Kenapa Kami</a>
+      <a href="#cara-pesan" class="mobile-nav-link">Cara Pesan</a>
+    </div>
+    <div class="mobile-nav-footer">
+      <a href="#" class="btn btn-primary btn-full" data-cta="whatsapp-general">
+        <span>Pesan via WhatsApp →</span>
+      </a>
+      <div class="mobile-nav-info">
+        <span>🕒 Buka 10.00 — 21.00 WIB</span>
+        <span>📍 Klaten & Sekitarnya</span>
+      </div>
+    </div>
+  </div>
+
+  <main id="main-content">
+    <!-- ========================================================================
+         HERO SECTION REDESIGN
+         Editorial Layout, High Food Impact, Hierarchy Typography
+         ======================================================================== -->
+    <section class="hero-section" id="hero">
+      <div class="container hero-grid">
+        <!-- LEFT: Editorial Content -->
+        <div class="hero-content reveal-on-scroll">
+          <div class="hero-label-wrap">
+            <span class="hero-label-badge">SIOMAY ONLINE</span>
+            <span class="hero-rating-badge">
+              <span class="rating-star">★</span> 4.9/5 • 100% Made Fresh
+            </span>
+          </div>
+
+          <h1 class="hero-headline">
+            <span class="headline-sub">SIOMAY ENAK,</span>
+            <span class="headline-main">LANGSUNG <span class="text-accent">DIANTAR.</span></span>
+          </h1>
+
+          <p class="hero-description">
+            Siomay fresh dengan bumbu kacang khas, dibuat setiap hari dan siap menemani waktu makanmu.
+          </p>
+
+          <div class="hero-actions">
+            <a href="#" class="btn btn-primary btn-hero" data-cta="whatsapp-general">
+              <span>Pesan via WhatsApp</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </a>
+            <a href="#menu" class="btn btn-secondary btn-hero">
+              <span>Lihat Menu</span>
+            </a>
+          </div>
+
+          <!-- Editorial Brand Statement micro-quote -->
+          <div class="hero-statement">
+            <span class="statement-quote">“Sederhana rasanya. Susah dilupakannya.”</span>
+          </div>
+
+          <div class="hero-trust-bar">
+            <div class="hero-trust-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Fresh setiap hari</span>
+            </div>
+            <span class="trust-dot">•</span>
+            <div class="hero-trust-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Bisa delivery</span>
+            </div>
+            <span class="trust-dot">•</span>
+            <div class="hero-trust-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Bahan berkualitas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Large Immersive Food Visual -->
+        <div class="hero-visual reveal-on-scroll delay-1">
+          <div class="hero-image-frame">
+            <img 
+              src="./images/hero.jpg" 
+              alt="Seporsi siomay komplit hangat dengan siraman bumbu kacang gurih kental, telur rebus, kentang, dan perasan jeruk limau segar" 
+              class="hero-image"
+              width="680" 
+              height="510"
+              fetchpriority="high"
+            >
+            <div class="hero-image-overlay" aria-hidden="true"></div>
+            
+            <!-- Curated Micro Detail: Clean Food Badge -->
+            <div class="hero-micro-card" aria-hidden="true">
+              <div class="micro-card-icon">🥟</div>
+              <div class="micro-card-text">
+                <span class="micro-card-title">Resep Bumbu Khas</span>
+                <span class="micro-card-subtitle">Kacang sangrai creamy & gurih</span>
+              </div>
+            </div>
+
+            <!-- Best Seller Pill Badge -->
+            <div class="hero-pill-badge" aria-hidden="true">
+              <span class="pill-dot"></span>
+              <span>Kukusan Hangat Siap Antar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         MENU SECTION UPGRADE
+         Product Cards with Editorial Depth & Clear Conversion
+         ======================================================================== -->
+    <section class="menu-section section-spacing" id="menu">
+      <div class="container">
+        <header class="section-header reveal-on-scroll">
+          <div class="section-tag">
+            <span class="section-tag-dot" aria-hidden="true"></span>
+            <span>Menu Pilihan</span>
+          </div>
+          <h2 class="section-title">MENU FAVORIT</h2>
+          <p class="section-subtitle">Pilihan sederhana dengan bumbu kacang resep khas. Dibuat fresh setiap hari.</p>
+        </header>
+
+        <div class="menu-grid" id="menuGrid">
+          <!-- Item 1: Siomay Original -->
+          <article class="menu-card reveal-on-scroll">
+            <div class="menu-card-image-wrap">
+              <span class="menu-badge badge-clean">Paling Populer</span>
+              <img 
+                src="./images/menu-original.jpg" 
+                alt="Siomay Original Bandung dengan siraman bumbu kacang khas" 
+                class="menu-card-image"
+                loading="lazy"
+                width="400" 
+                height="300"
+              >
+            </div>
+            <div class="menu-card-body">
+              <div class="menu-card-meta">
+                <span class="menu-rating">★ 4.9</span>
+                <span class="menu-meta-sep">•</span>
+                <span class="menu-portion">Porsi Mantap</span>
+              </div>
+              <h3 class="menu-card-title">Siomay Original</h3>
+              <p class="menu-card-desc">Siomay lembut dengan siraman bumbu kacang khas dan kecap manis gurih.</p>
+              <div class="menu-card-footer">
+                <div class="menu-card-price">
+                  <span class="price-label">Harga</span>
+                  <span class="price-amount">Rp15.000</span>
+                </div>
+                <button 
+                  type="button"
+                  class="btn-order-item" 
+                  data-product-order 
+                  data-product-name="Siomay Original" 
+                  data-product-price="Rp15.000"
+                  aria-label="Pesan Siomay Original seharga Rp15.000"
+                >
+                  <span>Pesan</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <!-- Item 2: Siomay Komplit (BEST SELLER) -->
+          <article class="menu-card menu-card-highlight reveal-on-scroll delay-1">
+            <div class="menu-card-image-wrap">
+              <span class="menu-badge badge-bestseller">BEST SELLER</span>
+              <img 
+                src="./images/menu-komplit.jpg" 
+                alt="Seporsi Siomay Komplit dengan tahu, kentang, telur, kol, dan bumbu kacang gurih" 
+                class="menu-card-image"
+                loading="lazy"
+                width="400" 
+                height="300"
+              >
+            </div>
+            <div class="menu-card-body">
+              <div class="menu-card-meta">
+                <span class="menu-rating">★ 4.9</span>
+                <span class="menu-meta-sep">•</span>
+                <span class="menu-portion">Paling Lengkap</span>
+              </div>
+              <h3 class="menu-card-title">Siomay Komplit</h3>
+              <p class="menu-card-desc">Siomay, tahu, kentang, telur, dan bumbu kacang khas yang melimpah.</p>
+              <div class="menu-card-footer">
+                <div class="menu-card-price">
+                  <span class="price-label">Harga</span>
+                  <span class="price-amount">Rp25.000</span>
+                </div>
+                <button 
+                  type="button"
+                  class="btn-order-item btn-order-primary" 
+                  data-product-order 
+                  data-product-name="Siomay Komplit" 
+                  data-product-price="Rp25.000"
+                  aria-label="Pesan Siomay Komplit seharga Rp25.000"
+                >
+                  <span>Pesan Sekarang</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <!-- Item 3: Batagor -->
+          <article class="menu-card reveal-on-scroll delay-2">
+            <div class="menu-card-image-wrap">
+              <img 
+                src="./images/menu-batagor.jpg" 
+                alt="Batagor renyah disiram bumbu kacang gurih dan kecap manis" 
+                class="menu-card-image"
+                loading="lazy"
+                width="400" 
+                height="300"
+              >
+            </div>
+            <div class="menu-card-body">
+              <div class="menu-card-meta">
+                <span class="menu-rating">★ 4.8</span>
+                <span class="menu-meta-sep">•</span>
+                <span class="menu-portion">Crispy & Gurih</span>
+              </div>
+              <h3 class="menu-card-title">Batagor</h3>
+              <p class="menu-card-desc">Batagor renyah keemasan dengan adonan gurih dan bumbu kacang kental.</p>
+              <div class="menu-card-footer">
+                <div class="menu-card-price">
+                  <span class="price-label">Harga</span>
+                  <span class="price-amount">Rp15.000</span>
+                </div>
+                <button 
+                  type="button"
+                  class="btn-order-item" 
+                  data-product-order 
+                  data-product-name="Batagor" 
+                  data-product-price="Rp15.000"
+                  aria-label="Pesan Batagor seharga Rp15.000"
+                >
+                  <span>Pesan</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <!-- Item 4: Tahu -->
+          <article class="menu-card reveal-on-scroll">
+            <div class="menu-card-image-wrap">
+              <img 
+                src="./images/menu-tahu.jpg" 
+                alt="Tahu lembut isi adonan ikan tenggiri gurih dengan bumbu kacang" 
+                class="menu-card-image"
+                loading="lazy"
+                width="400" 
+                height="300"
+              >
+            </div>
+            <div class="menu-card-body">
+              <div class="menu-card-meta">
+                <span class="menu-rating">★ 4.8</span>
+                <span class="menu-meta-sep">•</span>
+                <span class="menu-portion">Kukus Hangat</span>
+              </div>
+              <h3 class="menu-card-title">Tahu</h3>
+              <p class="menu-card-desc">Tahu lembut isi adonan ikan tenggiri gurih kukus hangat kaya rasa.</p>
+              <div class="menu-card-footer">
+                <div class="menu-card-price">
+                  <span class="price-label">Harga</span>
+                  <span class="price-amount">Rp12.000</span>
+                </div>
+                <button 
+                  type="button"
+                  class="btn-order-item" 
+                  data-product-order 
+                  data-product-name="Tahu" 
+                  data-product-price="Rp12.000"
+                  aria-label="Pesan Tahu seharga Rp12.000"
+                >
+                  <span>Pesan</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <!-- Item 5: Kentang -->
+          <article class="menu-card reveal-on-scroll delay-1">
+            <div class="menu-card-image-wrap">
+              <img 
+                src="./images/menu-kentang.jpg" 
+                alt="Kentang kukus pulen disiram bumbu kacang lezat" 
+                class="menu-card-image"
+                loading="lazy"
+                width="400" 
+                height="300"
+              >
+            </div>
+            <div class="menu-card-body">
+              <div class="menu-card-meta">
+                <span class="menu-rating">★ 4.7</span>
+                <span class="menu-meta-sep">•</span>
+                <span class="menu-portion">Pulen & Empuk</span>
+              </div>
+              <h3 class="menu-card-title">Kentang</h3>
+              <p class="menu-card-desc">Kentang kukus pulen empuk disiram bumbu kacang gurih dan jeruk limau.</p>
+              <div class="menu-card-footer">
+                <div class="menu-card-price">
+                  <span class="price-label">Harga</span>
+                  <span class="price-amount">Rp12.000</span>
+                </div>
+                <button 
+                  type="button"
+                  class="btn-order-item" 
+                  data-product-order 
+                  data-product-name="Kentang" 
+                  data-product-price="Rp12.000"
+                  aria-label="Pesan Kentang seharga Rp12.000"
+                >
+                  <span>Pesan</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <!-- Item 6: Paket Hemat -->
+          <article class="menu-card reveal-on-scroll delay-2">
+            <div class="menu-card-image-wrap">
+              <span class="menu-badge badge-savings">Paling Hemat</span>
+              <img 
+                src="./images/menu-paket-hemat.jpg" 
+                alt="Paket Hemat Siomay kombinasi puas untuk makan siang atau keluarga" 
+                class="menu-card-image"
+                loading="lazy"
+                width="400" 
+                height="300"
+              >
+            </div>
+            <div class="menu-card-body">
+              <div class="menu-card-meta">
+                <span class="menu-rating">★ 4.9</span>
+                <span class="menu-meta-sep">•</span>
+                <span class="menu-portion">Porsi Kenyang</span>
+              </div>
+              <h3 class="menu-card-title">Paket Hemat</h3>
+              <p class="menu-card-desc">Kombinasi siomay, batagor, tahu & telur untuk santap puas bersama teman atau keluarga.</p>
+              <div class="menu-card-footer">
+                <div class="menu-card-price">
+                  <span class="price-label">Harga Paket</span>
+                  <span class="price-amount">Rp35.000</span>
+                </div>
+                <button 
+                  type="button"
+                  class="btn-order-item" 
+                  data-product-order 
+                  data-product-name="Paket Hemat" 
+                  data-product-price="Rp35.000"
+                  aria-label="Pesan Paket Hemat seharga Rp35.000"
+                >
+                  <span>Pesan</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         EDITORIAL STORYTELLING SECTION (09)
+         Editorial Magazine Layout: Text + Large Food Photography
+         ======================================================================== -->
+    <section class="story-section section-spacing" id="cerita">
+      <div class="container story-grid">
+        <!-- Visual Column -->
+        <div class="story-image-column reveal-on-scroll">
+          <div class="story-image-wrap">
+            <img 
+              src="./images/story.jpg" 
+              alt="Close up tekstur siomay ikan lembut berpadu bumbu kacang sangrai kental dan harum" 
+              class="story-image"
+              loading="lazy"
+              width="640"
+              height="480"
+            >
+            <div class="story-image-badge">
+              <span class="badge-title">100% Homemade Recipe</span>
+              <span class="badge-sub">Bumbu kacang racikan turun-temurun</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Copy Column: Editorial Style -->
+        <div class="story-content reveal-on-scroll delay-1">
+          <div class="section-tag">
+            <span class="section-tag-dot" aria-hidden="true"></span>
+            <span>Cerita di Balik Rasa</span>
+          </div>
+
+          <h2 class="story-headline">
+            DIBUAT FRESH.<br>
+            <span class="text-accent">DISAJIKAN SEPENUH HATI.</span>
+          </h2>
+
+          <p class="story-quote">
+            “Setiap porsi dimulai dari bahan yang dipilih dengan baik, diolah dengan perhatian, lalu disajikan dengan bumbu kacang khas yang menjadi favorit kami.”
+          </p>
+
+          <p class="story-body">
+            Kami percaya bahwa makanan yang berkesan tidak butuh formula rumit. Cukup ikan segar berkualitas, adonan yang dikukus dengan ketepatan waktu, dan bumbu kacang sangrai yang digiling dengan tekstur creamy dan harum.
+          </p>
+
+          <div class="story-brand-callout">
+            <div class="callout-wordmark">SIOMAY<span class="brand-dot">.</span></div>
+            <div class="callout-statement">“Sederhana rasanya. Susah dilupakannya.”</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         FOOD JOURNEY SECTION (10)
+         Visual storytelling flow from kitchen to doorstep
+         ======================================================================== -->
+    <section class="journey-section section-spacing" id="proses">
+      <div class="container">
+        <header class="section-header reveal-on-scroll">
+          <div class="section-tag">
+            <span class="section-tag-dot" aria-hidden="true"></span>
+            <span>Food Journey</span>
+          </div>
+          <h2 class="section-title">DARI DAPUR HINGGA MEJAMU</h2>
+          <p class="section-subtitle">Setiap tahapan dijaga dengan standar kebersihan dan kesegaran tertinggi.</p>
+        </header>
+
+        <div class="journey-flow">
+          <!-- Step 01 -->
+          <div class="journey-step reveal-on-scroll">
+            <div class="journey-step-num">01</div>
+            <div class="journey-step-content">
+              <h3 class="journey-step-title">Pilih Bahan</h3>
+              <p class="journey-step-desc">Ikan tenggiri pilihan dan kacang tanah berkualitas terbaik yang disortir setiap pagi.</p>
+            </div>
+          </div>
+
+          <div class="journey-connector" aria-hidden="true"></div>
+
+          <!-- Step 02 -->
+          <div class="journey-step reveal-on-scroll delay-1">
+            <div class="journey-step-num">02</div>
+            <div class="journey-step-content">
+              <h3 class="journey-step-title">Dibuat Fresh</h3>
+              <p class="journey-step-desc">Diadon dan dikukus setiap hari tanpa pengawet buatan, menjaga kelembutan tekstur.</p>
+            </div>
+          </div>
+
+          <div class="journey-connector" aria-hidden="true"></div>
+
+          <!-- Step 03 -->
+          <div class="journey-step reveal-on-scroll delay-2">
+            <div class="journey-step-num">03</div>
+            <div class="journey-step-content">
+              <h3 class="journey-step-title">Disiram Bumbu Kacang</h3>
+              <p class="journey-step-desc">Bumbu kacang resep khas yang gurih creamy, disiram melimpah dengan perasan jeruk limau.</p>
+            </div>
+          </div>
+
+          <div class="journey-connector" aria-hidden="true"></div>
+
+          <!-- Step 04 -->
+          <div class="journey-step reveal-on-scroll delay-3">
+            <div class="journey-step-num">04</div>
+            <div class="journey-step-content">
+              <h3 class="journey-step-title">Siap Diantar</h3>
+              <p class="journey-step-desc">Dikemas hangat dan rapat, langsung dikirim sampai ke pintu rumahmu tepat waktu.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         WHY US SECTION (11)
+         3 Focused Feature Columns with Editorial Typography
+         ======================================================================== -->
+    <section class="features-section section-spacing" id="keunggulan">
+      <div class="container">
+        <header class="section-header reveal-on-scroll">
+          <div class="section-tag">
+            <span class="section-tag-dot" aria-hidden="true"></span>
+            <span>Komitmen Kami</span>
+          </div>
+          <h2 class="section-title">KENAPA SIOMAY KAMI?</h2>
+          <p class="section-subtitle">Tiga alasan kenapa siomay kami selalu dicari untuk santap siang, sore, maupun malam.</p>
+        </header>
+
+        <div class="features-grid-three">
+          <!-- Card 01 -->
+          <article class="feature-card-clean reveal-on-scroll">
+            <div class="feature-num-big">01</div>
+            <h3 class="feature-title-clean">FRESH SETIAP HARI</h3>
+            <p class="feature-desc-clean">
+              Dibuat fresh agar tekstur dan rasa tetap maksimal. Tidak ada stok sisa kemarin, hanya siomay hangat yang baru selesai dikukus.
+            </p>
+          </article>
+
+          <!-- Card 02 -->
+          <article class="feature-card-clean reveal-on-scroll delay-1">
+            <div class="feature-num-big">02</div>
+            <h3 class="feature-title-clean">BUMBU KACANG KHAS</h3>
+            <p class="feature-desc-clean">
+              Gurih, creamy, dan dibuat untuk melengkapi setiap gigitan. Resep kacang sangrai berpadu bumbu rempah pilihan yang harum menggoda.
+            </p>
+          </article>
+
+          <!-- Card 03 -->
+          <article class="feature-card-clean reveal-on-scroll delay-2">
+            <div class="feature-num-big">03</div>
+            <h3 class="feature-title-clean">SIAP DIANTAR</h3>
+            <p class="feature-desc-clean">
+              Pesan dari rumah dan nikmati tanpa perlu keluar. Cukup hubungi via WhatsApp, kurir kami langsung meluncur ke lokasimu.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         HOW TO ORDER SECTION
+         Clean, frictionless 3 steps
+         ======================================================================== -->
+    <section class="order-section section-spacing" id="cara-pesan">
+      <div class="container">
+        <header class="section-header reveal-on-scroll">
+          <div class="section-tag">
+            <span class="section-tag-dot" aria-hidden="true"></span>
+            <span>Alur Pemesanan</span>
+          </div>
+          <h2 class="section-title">CARA PESAN</h2>
+          <p class="section-subtitle">Tiga langkah praktis untuk menikmati siomay hangat di tempatmu.</p>
+        </header>
+
+        <div class="steps-grid">
+          <!-- Step 1 -->
+          <div class="step-card reveal-on-scroll">
+            <div class="step-header">
+              <span class="step-badge">Langkah 1</span>
+              <span class="step-digit">01</span>
+            </div>
+            <h3 class="step-title">Pilih Menu</h3>
+            <p class="step-desc">Tentukan menu siomay, batagor, atau paket favorit yang ingin kamu nikmati hari ini dari daftar menu kami.</p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step-card reveal-on-scroll delay-1">
+            <div class="step-header">
+              <span class="step-badge">Langkah 2</span>
+              <span class="step-digit">02</span>
+            </div>
+            <h3 class="step-title">Pesan via WhatsApp</h3>
+            <p class="step-desc">Klik tombol pesan untuk terhubung langsung ke WhatsApp kami dengan template pesanan otomatis yang siap kirim.</p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-card reveal-on-scroll delay-2">
+            <div class="step-header">
+              <span class="step-badge">Langkah 3</span>
+              <span class="step-digit">03</span>
+            </div>
+            <h3 class="step-title">Siomay Diantar</h3>
+            <p class="step-desc">Pesanan disiapkan fresh dari kukusan hangat dan dikirim langsung ke alamatmu dengan kemasan aman.</p>
+          </div>
+        </div>
+
+        <div class="steps-cta-center reveal-on-scroll">
+          <a href="#" class="btn btn-primary btn-lg" data-cta="whatsapp-general">
+            <span>Pesan via WhatsApp Sekarang →</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         TESTIMONIAL SECTION (15)
+         Natural, authentic customer voices
+         ======================================================================== -->
+    <section class="testimonial-section section-spacing">
+      <div class="container">
+        <header class="section-header reveal-on-scroll">
+          <div class="section-tag">
+            <span class="section-tag-dot" aria-hidden="true"></span>
+            <span>Kata Pelanggan</span>
+          </div>
+          <h2 class="section-title">APA KATA MEREKA?</h2>
+          <p class="section-subtitle">Pengalaman nyata dari mereka yang sudah mencicipi Siomay Online.</p>
+        </header>
+
+        <div class="testimonials-grid">
+          <!-- Testimonial 1 -->
+          <article class="testimonial-card reveal-on-scroll">
+            <div class="testimonial-stars" aria-label="Rating 5 dari 5 bintang">
+              ★★★★★
+            </div>
+            <p class="testimonial-quote">
+              “Siomaynya lembut dan bumbu kacangnya enak banget. Bakal order lagi.”
+            </p>
+            <div class="testimonial-author">
+              <div class="author-avatar" aria-hidden="true">B</div>
+              <div class="author-info">
+                <span class="author-name">Budi S.</span>
+                <span class="author-role">Klaten • Pelanggan Tetap</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Testimonial 2 -->
+          <article class="testimonial-card reveal-on-scroll delay-1">
+            <div class="testimonial-stars" aria-label="Rating 5 dari 5 bintang">
+              ★★★★★
+            </div>
+            <p class="testimonial-quote">
+              “Datangnya masih hangat dan bumbu kacangnya beneran berasa kacang sangrai asli, creamy dan nggak bikin enek. Mantap!”
+            </p>
+            <div class="testimonial-author">
+              <div class="author-avatar" aria-hidden="true">S</div>
+              <div class="author-info">
+                <span class="author-name">Sarah M.</span>
+                <span class="author-role">Klaten Utara • Pesan via WhatsApp</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Testimonial 3 -->
+          <article class="testimonial-card reveal-on-scroll delay-2">
+            <div class="testimonial-stars" aria-label="Rating 5 dari 5 bintang">
+              ★★★★★
+            </div>
+            <p class="testimonial-quote">
+              “Siomay komplitnya porsi kenyang, batagornya tetep renyah walau kena bumbu. Jadi langganan makan siang di kantor.”
+            </p>
+            <div class="testimonial-author">
+              <div class="author-avatar" aria-hidden="true">D</div>
+              <div class="author-info">
+                <span class="author-name">Dimas P.</span>
+                <span class="author-role">Klaten Tengah • Pelanggan Terverifikasi</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         FINAL CTA SECTION (16)
+         Closing Visual Food Shot & Strong Conversion
+         ======================================================================== -->
+    <section class="final-cta-section section-spacing">
+      <div class="container">
+        <div class="final-cta-card reveal-on-scroll">
+          <div class="final-cta-backdrop" aria-hidden="true"></div>
+          
+          <div class="final-cta-grid">
+            <div class="final-cta-content">
+              <div class="cta-tag">
+                <span class="cta-pulse-dot" aria-hidden="true"></span>
+                <span>Delivery Hangat Hari Ini</span>
+              </div>
+
+              <h2 class="final-cta-headline">
+                NGIDAM SIOMAY?
+              </h2>
+
+              <p class="final-cta-subheadline">
+                Jangan cuma dibayangin.
+              </p>
+
+              <p class="final-cta-body">
+                Pesan sekarang. Kami yang antar langsung ke tempatmu selagi hangat.
+              </p>
+
+              <div class="final-cta-actions">
+                <a href="#" class="btn btn-cta-primary" data-cta="whatsapp-general">
+                  <span>Pesan Sekarang →</span>
+                </a>
+                <span class="final-cta-note">⚡ Respon cepat via WhatsApp</span>
+              </div>
+            </div>
+
+            <!-- Closing Shot Visual Representation -->
+            <div class="final-cta-visual">
+              <div class="closing-photo-frame">
+                <img 
+                  src="./images/hero.jpg" 
+                  alt="Sajian siomay lezat bumbu kacang gurih hangat siap santap" 
+                  class="closing-photo"
+                  loading="lazy"
+                  width="500"
+                  height="380"
+                >
+                <div class="closing-badge">
+                  <span>Fresh Every Day</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========================================================================
+       FOOTER (17)
+       Minimal, Clean, Real Business Information
+       ======================================================================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <!-- Brand column -->
+        <div class="footer-brand">
+          <a href="#hero" class="brand-logo footer-logo-link" aria-label="Siomay Online Beranda">
+            <img src="./images/logo.png" alt="Siomay Online" class="brand-logo-img brand-logo-footer" width="76" height="76">
+          </a>
+          <p class="footer-statement">
+            “Sederhana rasanya. Susah dilupakannya.”
+          </p>
+          <p class="footer-desc">
+            Siomay fresh dengan bumbu kacang khas Bandung, diolah setiap hari dengan bahan berkualitas dan siap diantar ke rumahmu.
+          </p>
+          <div class="footer-hours">
+            <span>🕒 <strong>Buka:</strong> Setiap Hari, 10.00 — 21.00 WIB</span>
+            <span>📍 <strong>Area:</strong> Klaten & Sekitarnya</span>
+          </div>
+        </div>
+
+        <!-- Navigation links -->
+        <div class="footer-nav-col">
+          <h4 class="footer-col-title">Navigasi</h4>
+          <ul class="footer-links">
+            <li><a href="#hero" class="footer-link">Home</a></li>
+            <li><a href="#menu" class="footer-link">Menu Favorit</a></li>
+            <li><a href="#cerita" class="footer-link">Tentang Kami</a></li>
+            <li><a href="#proses" class="footer-link">Food Journey</a></li>
+            <li><a href="#cara-pesan" class="footer-link">Cara Pesan</a></li>
+          </ul>
+        </div>
+
+        <!-- Social links -->
+        <div class="footer-social-col">
+          <h4 class="footer-col-title">Hubungi Kami</h4>
+          <ul class="footer-links">
+            <li><a href="#" class="footer-link" data-cta="whatsapp-general">WhatsApp (Pemesanan)</a></li>
+            <li><a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="footer-link">Instagram</a></li>
+            <li><a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" class="footer-link">TikTok</a></li>
+          </ul>
+          <div class="footer-order-badge">
+            <span class="badge-dot"></span>
+            <span>Menerima pesanan acara / kantor</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>&copy; 2026 SIOMAY. All rights reserved.</div>
+        <div class="footer-tagline-bottom">Sederhana rasanya. Susah dilupakannya.</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================================================
+       CART DRAWER (Desktop Side Drawer / Mobile Bottom Sheet)
+       ======================================================================== -->
+  <div class="cart-drawer-overlay" id="cartOverlay" aria-hidden="true"></div>
+
+  <aside class="cart-drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-labelledby="cartDrawerTitle" tabindex="-1">
+    <div class="cart-drawer-header">
+      <div class="cart-drawer-title-wrap">
+        <span class="cart-drawer-icon" aria-hidden="true">🛒</span>
+        <h2 class="cart-drawer-title" id="cartDrawerTitle">Pesanan Kamu</h2>
+        <span class="cart-drawer-count" id="drawerCartCount">0 item</span>
+      </div>
+      <button type="button" class="cart-drawer-close" id="closeCartBtn" aria-label="Tutup Keranjang">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="cart-drawer-body" id="cartDrawerBody">
+      <!-- Items list or empty state rendered dynamically -->
+      <div class="cart-items-list" id="cartItemsList"></div>
+
+      <!-- Customer Form (shown when cart has items) -->
+      <div class="cart-customer-section" id="cartCustomerSection" style="display: none;">
+        <div class="cart-section-title">
+          <span class="step-circle" aria-hidden="true">1</span>
+          <span>Informasi Pengantaran</span>
+        </div>
+
+        <div class="form-error-alert" id="formErrorAlert" role="alert" style="display: none;"></div>
+
+        <form id="orderForm" class="cart-order-form" onsubmit="return false;" novalidate>
+          <div class="form-group">
+            <label for="customerName" class="form-label">Nama Lengkap <span class="required-star">*</span></label>
+            <input type="text" id="customerName" class="form-input" placeholder="Nama kamu" autocomplete="name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="customerPhone" class="form-label">Nomor WhatsApp <span class="required-star">*</span></label>
+            <input type="tel" id="customerPhone" class="form-input" placeholder="08xxxxxxxxxx" autocomplete="tel" required>
+          </div>
+
+          <div class="form-group">
+            <label for="customerAddress" class="form-label">Alamat Lengkap Pengantaran <span class="required-star">*</span></label>
+            <textarea id="customerAddress" class="form-input form-textarea" rows="2" placeholder="Nama jalan, nomor rumah, RT/RW, atau patokan lokasi" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="customerNote" class="form-label">Catatan Pesanan <span class="optional-tag">(opsional)</span></label>
+            <input type="text" id="customerNote" class="form-input" placeholder="Contoh: tidak pedas, sambal dipisah">
+          </div>
+        </form>
+      </div>
+
+      <!-- Success state (after WhatsApp triggered) -->
+      <div class="cart-success-view" id="cartSuccessView" style="display: none;">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <h3 class="success-title">Pesanan Siap Dikirim ke WhatsApp!</h3>
+        <p class="success-desc">
+          Format pesanan kamu telah disiapkan. Silakan lanjutkan percakapan dengan admin untuk konfirmasi ketersediaan dan biaya delivery.
+        </p>
+        <div class="success-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnBackToOrder">Ubah Pesanan</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnReopenWa">Kirim Ulang WhatsApp</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart Footer / Summary -->
+    <div class="cart-drawer-footer" id="cartDrawerFooter" style="display: none;">
+      <div class="cart-summary">
+        <div class="summary-row">
+          <span class="summary-label">Subtotal</span>
+          <span class="summary-val" id="summarySubtotal">Rp0</span>
+        </div>
+        <div class="summary-row summary-delivery">
+          <span class="summary-label">Biaya Delivery</span>
+          <span class="summary-val summary-delivery-note">Dikonfirmasi via WhatsApp</span>
+        </div>
+        <div class="summary-row summary-total">
+          <span class="summary-label">Total Pesanan</span>
+          <span class="summary-val summary-total-val" id="summaryTotal">Rp0</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-full btn-submit-order" id="submitOrderBtn">
+        <span>Pesan via WhatsApp →</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Mobile Sticky Order Pill (Fixed Bottom Bar on Mobile) -->
+  <aside class="mobile-sticky-order" id="mobileStickyOrder" aria-label="Ringkasan Pesanan">
+    <div class="mobile-sticky-inner">
+      <div class="mobile-sticky-info">
+        <span class="mobile-sticky-icon" aria-hidden="true">🛒</span>
+        <span class="mobile-sticky-count" id="stickyCount">0 item</span>
+        <span class="mobile-sticky-sep" aria-hidden="true">•</span>
+        <span class="mobile-sticky-total" id="stickyTotal">Rp0</span>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm btn-sticky-action" id="stickyViewCartBtn">
+        <span>Lihat Pesanan →</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Application Logic -->
+</body>
+</html>
