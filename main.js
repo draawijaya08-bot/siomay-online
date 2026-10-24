@@ -98,9 +98,12 @@ export function formatRupiah(amount) {
   return "Rp" + cleanInt.toLocaleString("id-ID");
 }
 
-// Helper: Get product by ID
+// Dynamic Active Products (initialized from static PRODUCTS fallback)
+export let activeProducts = [...PRODUCTS];
+
+// Helper: Get product by ID (searches active dynamic products then fallback)
 export function getProductById(id) {
-  return PRODUCTS.find(p => p.id === id) || null;
+  return activeProducts.find(p => p.id === id) || PRODUCTS.find(p => p.id === id) || null;
 }
 
 // =============================================================================
@@ -289,20 +292,138 @@ export function buildWhatsAppOrderUrl(cartSummary, customer) {
   return `${CONFIG.whatsappBaseUrl}${cleanNumber}?text=${encodeURIComponent(text)}`;
 }
 
+import { initReviewsSection } from "./reviews.js";
+import { fetchAllMenuItems, fetchSiteSettings } from "./cmsService.js";
+
 // =============================================================================
-// 5. DOM INITIALIZATION
+// 5. DOM INITIALIZATION & DYNAMIC CMS SYNC
 // =============================================================================
 if (typeof document !== "undefined") {
   document.addEventListener("DOMContentLoaded", () => {
+    // 1. Instant render from local defaults (Zero layout shift / offline resilience)
     renderMenuCards();
     initCartDrawer();
     updateCartUI();
+    initReviewsSection();
     initWhatsAppLinks();
     initNavbarScroll();
     initMobileMenu();
     initScrollSpy();
     initScrollReveal();
+
+    // 2. Fetch live updates from Supabase CMS (Menu, Banner, Promo Video, WhatsApp)
+    syncPublicWebsiteFromBackend();
   });
+}
+
+/**
+ * Synchronize live content from Supabase backend
+ */
+async function syncPublicWebsiteFromBackend() {
+  try {
+    const [menuRes, settingsRes] = await Promise.all([
+      fetchAllMenuItems(),
+      fetchSiteSettings()
+    ]);
+
+    // A. Sync Food Menu
+    if (menuRes.success && menuRes.items && menuRes.items.length > 0) {
+      activeProducts = menuRes.items.map(item => ({
+        id: item.slug || item.id,
+        dbId: item.id,
+        name: item.name,
+        price: item.price,
+        desc: item.description,
+        image: item.image_url || "/images/menu-original.jpg",
+        badge: item.badge,
+        portion: item.portion || "Porsi Mantap",
+        rating: Number(item.rating) || 4.9,
+        isBestSeller: Boolean(item.is_best_seller),
+        isAvailable: item.is_available !== false
+      }));
+      renderMenuCards();
+      updateCartUI();
+    }
+
+    // B. Sync Site Settings (WhatsApp, Banner, Promo Video)
+    if (settingsRes.success && settingsRes.settings) {
+      const s = settingsRes.settings;
+
+      if (s.whatsapp_number) {
+        CONFIG.whatsappNumber = s.whatsapp_number;
+      }
+      if (s.default_order_message) {
+        CONFIG.defaultOrderMessage = s.default_order_message;
+      }
+      initWhatsAppLinks();
+
+      // Hero Headline
+      const heroHeadline = document.querySelector(".hero-headline");
+      if (heroHeadline && s.hero_title) {
+        heroHeadline.innerHTML = `<span class="headline-main">${s.hero_title}</span>`;
+      }
+
+      // Hero Description
+      const heroDesc = document.querySelector(".hero-description");
+      if (heroDesc && s.hero_subtitle) {
+        heroDesc.textContent = s.hero_subtitle;
+      }
+
+      // Hero Badge
+      const heroBadge = document.querySelector(".hero-label-badge");
+      if (heroBadge && s.hero_badge) {
+        heroBadge.textContent = s.hero_badge;
+      }
+
+      // Hero CTA Button
+      const heroCtaSpan = document.querySelector(".btn-hero[data-cta='whatsapp-general'] span");
+      if (heroCtaSpan && s.hero_cta_text) {
+        heroCtaSpan.textContent = s.hero_cta_text;
+      }
+
+      // Hero Image
+      const heroImg = document.querySelector(".hero-image");
+      if (heroImg && s.hero_image_url) {
+        heroImg.src = s.hero_image_url;
+      }
+
+      // Promotional Video
+      if (s.promo_video_url) {
+        renderPromoVideoOnPublicSite(s.promo_video_url, s.promo_video_poster_url);
+      }
+    }
+  } catch (err) {
+    console.info("[Siomay Online] Menggunakan konten default:", err);
+  }
+}
+
+/**
+ * Embed dynamic promo video into the Story / Visual section
+ */
+function renderPromoVideoOnPublicSite(videoUrl, posterUrl = null) {
+  const storyWrap = document.querySelector(".story-image-wrap");
+  if (!storyWrap || !videoUrl) return;
+
+  const existingVideo = storyWrap.querySelector(".story-promo-video");
+  if (existingVideo) {
+    existingVideo.src = videoUrl;
+    if (posterUrl) existingVideo.poster = posterUrl;
+    return;
+  }
+
+  // Hide static image and append responsive video player
+  const staticImg = storyWrap.querySelector(".story-image");
+  if (staticImg) staticImg.style.display = "none";
+
+  const videoEl = document.createElement("video");
+  videoEl.className = "story-image story-promo-video";
+  videoEl.controls = true;
+  videoEl.playsInline = true;
+  videoEl.preload = "metadata";
+  if (posterUrl) videoEl.poster = posterUrl;
+  videoEl.src = videoUrl;
+
+  storyWrap.appendChild(videoEl);
 }
 
 // =============================================================================
@@ -312,12 +433,15 @@ function renderMenuCards() {
   const grid = document.getElementById("menuGrid");
   if (!grid) return;
 
-  grid.innerHTML = PRODUCTS.map((product, idx) => {
+  grid.innerHTML = activeProducts.map((product, idx) => {
     const isHighlight = product.isBestSeller ? "menu-card-highlight" : "";
     const delayClass = idx % 3 === 1 ? "delay-1" : idx % 3 === 2 ? "delay-2" : "";
+    const isAvailable = product.isAvailable !== false;
 
     let badgeHtml = "";
-    if (product.badge) {
+    if (!isAvailable) {
+      badgeHtml = `<span class="menu-badge badge-out-of-stock" style="background:#DC2626;color:#FFF;">Stok Habis</span>`;
+    } else if (product.badge) {
       let badgeClass = "badge-clean";
       if (product.isBestSeller) badgeClass = "badge-bestseller";
       else if (product.badge.toLowerCase().includes("hemat")) badgeClass = "badge-savings";
@@ -325,7 +449,7 @@ function renderMenuCards() {
     }
 
     return `
-      <article class="menu-card ${isHighlight} reveal-on-scroll ${delayClass}" data-product-card-id="${product.id}">
+      <article class="menu-card ${isHighlight} reveal-on-scroll ${delayClass} ${!isAvailable ? 'item-out-of-stock' : ''}" data-product-card-id="${product.id}">
         <div class="menu-card-image-wrap">
           ${badgeHtml}
           <img 
@@ -350,15 +474,26 @@ function renderMenuCards() {
               <span class="price-label">Harga</span>
               <span class="price-amount">${formatRupiah(product.price)}</span>
             </div>
-            <button 
-              type="button"
-              class="btn-order-item ${product.isBestSeller ? 'btn-order-primary' : ''}" 
-              data-add-to-cart="${product.id}"
-              aria-label="Tambah ${product.name} seharga ${formatRupiah(product.price)}"
-            >
-              <span class="btn-order-icon" aria-hidden="true">+</span>
-              <span class="btn-order-text">Tambah</span>
-            </button>
+            ${isAvailable ? `
+              <button 
+                type="button"
+                class="btn-order-item ${product.isBestSeller ? 'btn-order-primary' : ''}" 
+                data-add-to-cart="${product.id}"
+                aria-label="Tambah ${product.name} seharga ${formatRupiah(product.price)}"
+              >
+                <span class="btn-order-icon" aria-hidden="true">+</span>
+                <span class="btn-order-text">Tambah</span>
+              </button>
+            ` : `
+              <button 
+                type="button"
+                class="btn-order-item" 
+                disabled
+                style="opacity:0.55;cursor:not-allowed;"
+              >
+                <span>Stok Habis</span>
+              </button>
+            `}
           </div>
         </div>
       </article>

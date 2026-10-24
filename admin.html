@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin CMS — Siomay Online</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="cms-body">
+
+  <!-- ========================================================================
+       AUTH VIEW: OWNER LOGIN SCREEN
+       ======================================================================== -->
+  <div id="authView" class="cms-auth-screen" style="display: none;">
+    <div class="cms-auth-card">
+      <div class="cms-auth-header">
+        <a href="/" class="cms-brand-logo">
+          <img src="/images/logo.png" alt="Siomay Online" width="56" height="56">
+        </a>
+        <h1 class="cms-auth-title">Admin CMS Siomay Online</h1>
+        <p class="cms-auth-subtitle">Masuk dengan akun pemilik (owner) untuk mengelola website.</p>
+      </div>
+
+      <div id="authErrorAlert" class="cms-alert cms-alert-error" style="display: none;" role="alert"></div>
+
+      <form id="ownerLoginForm" class="cms-auth-form" onsubmit="return false;" novalidate>
+        <div class="form-group">
+          <label for="ownerEmail" class="form-label">Email Pemilik <span class="required-star">*</span></label>
+          <input 
+            type="email" 
+            id="ownerEmail" 
+            class="form-input" 
+            placeholder="owner@siomayonline.com" 
+            autocomplete="email" 
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="ownerPassword" class="form-label">Kata Sandi <span class="required-star">*</span></label>
+          <input 
+            type="password" 
+            id="ownerPassword" 
+            class="form-input" 
+            placeholder="••••••••" 
+            autocomplete="current-password" 
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="btnOwnerLogin">
+          <span>Masuk ke Dashboard →</span>
+        </button>
+
+        <!-- Quick Demo Account Access Box -->
+        <div class="cms-demo-box">
+          <div class="demo-box-badge">👑 Akun Khusus Demo Admin</div>
+          <p class="demo-box-desc">Gunakan akun demo berikut untuk langsung melihat seluruh isi dashboard & fitur moderasi:</p>
+          <div class="demo-credentials-pill">
+            <span>Email: <strong>admin@siomayonline.com</strong></span>
+            <span>Password: <strong>admin123</strong></span>
+          </div>
+          <button type="button" class="btn btn-secondary btn-full btn-demo-action" id="btnQuickDemoLogin">
+            <span>⚡ Masuk Cepat Akun Demo (1-Klik)</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="cms-auth-footer">
+        <a href="/" class="cms-back-link">← Kembali ke Website Publik</a>
+        <div class="cms-auth-hint">
+          <span>ℹ️ Akun owner diotorisasi via tabel <code>admin_users</code> di Supabase.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MAIN CMS DASHBOARD LAYOUT (AUTHENTICATED OWNER)
+       ======================================================================== -->
+  <div id="cmsDashboardLayout" class="cms-layout" style="display: none;">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="cms-sidebar" id="cmsSidebar">
+      <div class="cms-sidebar-header">
+        <a href="/" class="cms-sidebar-brand" target="_blank" title="Buka Website Publik">
+          <img src="/images/logo.png" alt="Siomay Online" width="40" height="40">
+          <div class="cms-sidebar-brand-text">
+            <strong>Siomay Online</strong>
+            <span>Admin CMS</span>
+          </div>
+        </a>
+        <button type="button" class="cms-sidebar-close" id="btnSidebarClose" aria-label="Tutup Menu">✕</button>
+      </div>
+
+      <nav class="cms-nav" aria-label="Menu CMS">
+        <button type="button" class="cms-nav-item active" data-target-view="viewOverview">
+          <span class="nav-icon" aria-hidden="true">📊</span>
+          <span>Ringkasan</span>
+        </button>
+        <button type="button" class="cms-nav-item" data-target-view="viewMenu">
+          <span class="nav-icon" aria-hidden="true">🥟</span>
+          <span>Kelola Menu</span>
+        </button>
+        <button type="button" class="cms-nav-item" data-target-view="viewContent">
+          <span class="nav-icon" aria-hidden="true">🖼️</span>
+          <span>Banner & Video</span>
+        </button>
+        <button type="button" class="cms-nav-item" data-target-view="viewWhatsApp">
+          <span class="nav-icon" aria-hidden="true">💬</span>
+          <span>WhatsApp & Pesanan</span>
+        </button>
+        <button type="button" class="cms-nav-item" data-target-view="viewReviews">
+          <span class="nav-icon" aria-hidden="true">⭐</span>
+          <span>Ulasan Pelanggan</span>
+          <span class="cms-nav-badge" id="sidebarPendingReviewsBadge" style="display: none;">0</span>
+        </button>
+      </nav>
+
+      <div class="cms-sidebar-footer">
+        <div class="cms-user-pill">
+          <span class="user-avatar" aria-hidden="true">👑</span>
+          <div class="user-info">
+            <span class="user-role">Pemilik (Owner)</span>
+            <span class="user-email" id="sidebarUserEmail">owner@siomay.com</span>
+          </div>
+        </div>
+        <div class="cms-sidebar-actions">
+          <a href="/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm btn-full">
+            <span>🌐 Website Publik</span>
+          </a>
+          <button type="button" class="btn btn-secondary btn-sm btn-full btn-logout" id="btnOwnerLogout">
+            <span>🚪 Keluar</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Sidebar Backdrop on Mobile -->
+    <div class="cms-sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- Main Content Area -->
+    <div class="cms-main-wrapper">
+      
+      <!-- Top Mobile / Action Bar -->
+      <header class="cms-topbar">
+        <div class="topbar-left">
+          <button type="button" class="cms-hamburger-btn" id="btnSidebarOpen" aria-label="Buka Menu Sidebar">
+            ☰
+          </button>
+          <h2 class="topbar-page-title" id="topbarPageTitle">Ringkasan Dashboard</h2>
+        </div>
+        <div class="topbar-right">
+          <span class="cms-db-status" id="cmsDbStatusIndicator">
+            <span class="status-dot"></span> Supabase Terhubung
+          </span>
+          <a href="/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+            <span>Lihat Web ↗</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Global Notification Alert -->
+      <div class="container-cms">
+        <div id="cmsGlobalAlert" class="cms-alert" style="display: none;" role="alert"></div>
+      </div>
+
+      <!-- ======================================================================
+           VIEW 1: DASHBOARD OVERVIEW
+           ====================================================================== -->
+      <section id="viewOverview" class="cms-view active">
+        <div class="container-cms">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Ringkasan Website</h1>
+              <p class="view-desc">Status menu makanan, kontak WhatsApp, dan aktivitas pelanggan Siomay Online.</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshOverview">
+              <span>🔄 Segarkan Data</span>
+            </button>
+          </div>
+
+          <!-- Metric Cards -->
+          <div class="cms-metrics-grid">
+            <div class="cms-metric-card">
+              <span class="metric-icon">🥟</span>
+              <div class="metric-info">
+                <span class="metric-label">Total Menu Makanan</span>
+                <strong class="metric-val" id="metricTotalMenu">0</strong>
+              </div>
+            </div>
+            <div class="cms-metric-card">
+              <span class="metric-icon">💬</span>
+              <div class="metric-info">
+                <span class="metric-label">WhatsApp Pemesanan</span>
+                <strong class="metric-val text-sm" id="metricWhatsApp">628XXXXXXXXXX</strong>
+              </div>
+            </div>
+            <div class="cms-metric-card">
+              <span class="metric-icon">⭐</span>
+              <div class="metric-info">
+                <span class="metric-label">Ulasan Menunggu Tinjauan</span>
+                <strong class="metric-val text-orange" id="metricPendingReviews">0</strong>
+              </div>
+            </div>
+            <div class="cms-metric-card">
+              <span class="metric-icon">✓</span>
+              <div class="metric-info">
+                <span class="metric-label">Ulasan Disetujui</span>
+                <strong class="metric-val text-green" id="metricApprovedReviews">0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Shortcuts -->
+          <div class="cms-quick-grid">
+            <div class="cms-card">
+              <h3 class="card-title">Aksi Cepat Menu</h3>
+              <p class="card-desc">Tambahkan item baru, ubah harga, atau update stok menu hari ini.</p>
+              <button type="button" class="btn btn-primary btn-sm" id="btnQuickAddMenu">
+                <span>+ Tambah Menu Baru</span>
+              </button>
+            </div>
+            <div class="cms-card">
+              <h3 class="card-title">Promosi & Banner</h3>
+              <p class="card-desc">Ubah foto hero banner utama atau video promosi untuk menarik pelanggan.</p>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnQuickEditBanner">
+                <span>Kelola Banner & Video →</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           VIEW 2: FOOD MENU MANAGEMENT (CRUD)
+           ====================================================================== -->
+      <section id="viewMenu" class="cms-view" style="display: none;">
+        <div class="container-cms">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Kelola Menu Makanan</h1>
+              <p class="view-desc">Kelola daftar produk siomay, batagor, harga, deskripsi, foto, dan ketersediaan stok.</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="btnAddNewMenuItem">
+              <span>+ Tambah Menu Baru</span>
+            </button>
+          </div>
+
+          <div id="menuListLoading" class="cms-loading-state" style="display: none;">
+            <span class="admin-spinner"></span>
+            <p>Memuat daftar menu...</p>
+          </div>
+
+          <div id="menuListEmpty" class="cms-empty-state" style="display: none;">
+            <p>Belum ada menu di database. Klik tombol "+ Tambah Menu Baru" di atas.</p>
+          </div>
+
+          <!-- Menu Items Grid -->
+          <div class="cms-menu-grid" id="cmsMenuGrid"></div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           VIEW 3: HOMEPAGE BANNER & PROMOTIONAL CONTENT
+           ====================================================================== -->
+      <section id="viewContent" class="cms-view" style="display: none;">
+        <div class="container-cms">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Banner & Konten Promosi</h1>
+              <p class="view-desc">Atur teks headline hero, badge, foto banner, dan sematkan video promosi.</p>
+            </div>
+          </div>
+
+          <form id="heroContentForm" class="cms-card-form" onsubmit="return false;" novalidate>
+            <h3 class="section-heading">1. Hero Banner Utama</h3>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="settingHeroBadge" class="form-label">Badge Label Hero</label>
+                <input type="text" id="settingHeroBadge" class="form-input" placeholder="SIOMAY ONLINE">
+              </div>
+              <div class="form-group">
+                <label for="settingHeroCtaText" class="form-label">Teks Tombol CTA</label>
+                <input type="text" id="settingHeroCtaText" class="form-input" placeholder="Pesan via WhatsApp">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="settingHeroTitle" class="form-label">Headline Banner <span class="required-star">*</span></label>
+              <input type="text" id="settingHeroTitle" class="form-input" placeholder="Sederhana Rasanya, Susah Dilupakannya." required>
+            </div>
+
+            <div class="form-group">
+              <label for="settingHeroSubtitle" class="form-label">Subheadline / Deskripsi</label>
+              <textarea id="settingHeroSubtitle" class="form-input form-textarea" rows="3" placeholder="Siomay fresh dengan bumbu kacang khas Bandung..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Foto Hero Banner</label>
+              <div class="media-upload-box">
+                <div class="media-preview-wrap">
+                  <img id="heroImagePreview" src="/images/hero.jpg" alt="Preview Banner" class="media-preview-img">
+                </div>
+                <div class="media-upload-controls">
+                  <input type="file" id="heroImageFileInput" accept="image/jpeg,image/png,image/webp,image/avif" class="file-input-hidden">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnUploadHeroImage">
+                    <span>📁 Unggah Foto Baru</span>
+                  </button>
+                  <span class="file-hint">Maksimal 5MB (JPG, PNG, WebP).</span>
+                  <input type="text" id="settingHeroImageUrl" class="form-input text-xs" placeholder="/images/hero.jpg">
+                </div>
+              </div>
+            </div>
+
+            <hr class="cms-divider">
+
+            <h3 class="section-heading">2. Video Promosi (Opsional)</h3>
+            <p class="section-desc">Unggah video pendek (MP4/WebM) atau masukkan URL video promosi.</p>
+
+            <div class="form-group">
+              <label for="settingPromoVideoUrl" class="form-label">URL Video Promosi (MP4/WebM)</label>
+              <div class="input-with-button">
+                <input type="url" id="settingPromoVideoUrl" class="form-input" placeholder="https://... atau unggah file video">
+                <input type="file" id="promoVideoFileInput" accept="video/mp4,video/webm" class="file-input-hidden">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnUploadPromoVideo">
+                  <span>🎥 Unggah Video</span>
+                </button>
+              </div>
+              <span class="file-hint">Format didukung: MP4 atau WebM (Maksimal 50MB).</span>
+            </div>
+
+            <div class="form-group" id="promoVideoPreviewContainer" style="display: none;">
+              <label class="form-label">Pratinjau Video</label>
+              <video id="promoVideoPreview" controls playsinline class="video-preview-player"></video>
+              <button type="button" class="btn btn-danger btn-sm mt-2" id="btnRemovePromoVideo">Hapus Video</button>
+            </div>
+
+            <div class="form-actions-right">
+              <button type="submit" class="btn btn-primary" id="btnSaveHeroContent">
+                <span>Simpan Pengaturan Konten</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           VIEW 4: WHATSAPP ORDERING SETTINGS
+           ====================================================================== -->
+      <section id="viewWhatsApp" class="cms-view" style="display: none;">
+        <div class="container-cms">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Pengaturan WhatsApp & Pesanan</h1>
+              <p class="view-desc">Nomor WhatsApp resmi yang digunakan untuk menerima checkout keranjang belanja dan tombol pesan.</p>
+            </div>
+          </div>
+
+          <form id="whatsAppSettingsForm" class="cms-card-form" onsubmit="return false;" novalidate>
+            <div class="form-group">
+              <label for="settingWhatsAppNumber" class="form-label">Nomor WhatsApp Toko <span class="required-star">*</span></label>
+              <input 
+                type="tel" 
+                id="settingWhatsAppNumber" 
+                class="form-input" 
+                placeholder="6281234567890" 
+                required
+              >
+              <span class="field-help">Gunakan format internasional tanpa spasi atau tanda plus (+). Contoh: <code>6281234567890</code>.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="settingDefaultOrderMessage" class="form-label">Pesan WhatsApp Default (Tombol Umum)</label>
+              <textarea 
+                id="settingDefaultOrderMessage" 
+                class="form-input form-textarea" 
+                rows="3" 
+                placeholder="Halo Siomay Online, saya ingin pesan siomay fresh untuk diantar."
+              ></textarea>
+              <span class="field-help">Pesan ini digunakan saat pengunjung mengeklik tombol "Pesan via WhatsApp" di hero atau footer.</span>
+            </div>
+
+            <div class="cms-preview-box">
+              <span class="preview-label">Pratinjau Link WhatsApp Hasil Generate:</span>
+              <code id="previewWaLinkDisplay">https://wa.me/628XXXXXXXXXX</code>
+              <div class="mt-2">
+                <a href="#" id="btnTestWaLink" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+                  <span>📱 Uji Coba Buka Link WhatsApp</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="form-actions-right">
+              <button type="submit" class="btn btn-primary" id="btnSaveWhatsApp">
+                <span>Simpan Nomor WhatsApp</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           VIEW 5: CUSTOMER REVIEWS MODERATION
+           ====================================================================== -->
+      <section id="viewReviews" class="cms-view" style="display: none;">
+        <div class="container-cms">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Moderasi Ulasan Pelanggan</h1>
+              <p class="view-desc">Ulasan yang dikirim oleh pelanggan dari website publik. Hanya ulasan yang berstatus 'Disetujui' yang akan tampil di halaman depan.</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshReviews">
+              <span>🔄 Segarkan Ulasan</span>
+            </button>
+          </div>
+
+          <!-- Filter Tabs -->
+          <div class="admin-tabs-bar">
+            <div class="admin-tabs" role="tablist">
+              <button type="button" class="admin-tab active" data-review-filter="all">Semua Ulasan</button>
+              <button type="button" class="admin-tab" data-review-filter="pending">Menunggu Tinjauan</button>
+              <button type="button" class="admin-tab" data-review-filter="approved">Disetujui (Tampil di Web)</button>
+              <button type="button" class="admin-tab" data-review-filter="rejected">Ditolak</button>
+            </div>
+          </div>
+
+          <div id="reviewsListLoading" class="cms-loading-state" style="display: none;">
+            <span class="admin-spinner"></span>
+            <p>Memuat ulasan pelanggan...</p>
+          </div>
+
+          <div id="reviewsListEmpty" class="cms-empty-state" style="display: none;">
+            <p>Tidak ada ulasan pada kategori ini.</p>
+          </div>
+
+          <div class="admin-reviews-list" id="cmsReviewsList"></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: ADD / EDIT FOOD MENU ITEM
+       ======================================================================== -->
+  <div class="review-modal-overlay" id="menuModalOverlay" aria-hidden="true"></div>
+
+  <div 
+    class="review-modal cms-modal" 
+    id="menuModal" 
+    role="dialog" 
+    aria-modal="true" 
+    aria-labelledby="menuModalTitle" 
+    tabindex="-1"
+  >
+    <div class="review-modal-header">
+      <div>
+        <h2 class="review-modal-title" id="menuModalTitle">Tambah Menu Baru</h2>
+        <p class="review-modal-subtitle">Isi rincian menu makanan, harga, dan foto produk.</p>
+      </div>
+      <button type="button" class="review-modal-close" id="btnCloseMenuModal" aria-label="Tutup modal">✕</button>
+    </div>
+
+    <div class="review-modal-body">
+      <div id="menuModalAlert" class="cms-alert cms-alert-error" style="display: none;" role="alert"></div>
+
+      <form id="menuItemForm" onsubmit="return false;" novalidate>
+        <input type="hidden" id="editMenuItemId" value="">
+
+        <div class="form-group">
+          <label for="menuItemName" class="form-label">Nama Menu <span class="required-star">*</span></label>
+          <input type="text" id="menuItemName" class="form-input" placeholder="Contoh: Siomay Spesial Telur" required>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="menuItemPrice" class="form-label">Harga (Rp) <span class="required-star">*</span></label>
+            <input type="number" id="menuItemPrice" class="form-input" placeholder="25000" min="0" step="500" required>
+          </div>
+          <div class="form-group">
+            <label for="menuItemPortion" class="form-label">Porsi / Varian</label>
+            <input type="text" id="menuItemPortion" class="form-input" placeholder="Porsi Mantap / Lengkap">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="menuItemDesc" class="form-label">Deskripsi <span class="required-star">*</span></label>
+          <textarea id="menuItemDesc" class="form-input form-textarea" rows="3" placeholder="Siomay lembut dengan bumbu kacang khas..." required></textarea>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="menuItemBadge" class="form-label">Badge Khusus (opsional)</label>
+            <input type="text" id="menuItemBadge" class="form-input" placeholder="BEST SELLER / Paling Populer">
+          </div>
+          <div class="form-group">
+            <label for="menuItemRating" class="form-label">Rating Awal (1.0 - 5.0)</label>
+            <input type="number" id="menuItemRating" class="form-input" value="4.9" min="1.0" max="5.0" step="0.1">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Foto Menu</label>
+          <div class="media-upload-box">
+            <div class="media-preview-wrap">
+              <img id="menuItemImagePreview" src="/images/menu-original.jpg" alt="Preview Foto" class="media-preview-img">
+            </div>
+            <div class="media-upload-controls">
+              <input type="file" id="menuItemFileInput" accept="image/jpeg,image/png,image/webp,image/avif" class="file-input-hidden">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnUploadMenuImage">
+                <span>📁 Pilih Foto Baru</span>
+              </button>
+              <span class="file-hint">Maksimal 5MB (JPG, PNG, WebP).</span>
+              <input type="text" id="menuItemImageUrl" class="form-input text-xs" placeholder="/images/menu-original.jpg">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-2 checkbox-group">
+          <label class="cms-checkbox-label">
+            <input type="checkbox" id="menuItemIsAvailable" checked>
+            <span>Tersedia untuk Dipesan (Stok Ada)</span>
+          </label>
+          <label class="cms-checkbox-label">
+            <input type="checkbox" id="menuItemIsBestSeller">
+            <span>Tandai sebagai Best Seller (Highlight)</span>
+          </label>
+        </div>
+
+        <div class="review-form-actions mt-4">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnCancelMenuModal">Batal</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveMenuItem">
+            <span>Simpan Menu</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/admin.js"></script>
+</body>
+</html>

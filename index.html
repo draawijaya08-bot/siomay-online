@@ -78,6 +78,7 @@
         <a href="#cerita" class="nav-link">Tentang Kami</a>
         <a href="#proses" class="nav-link">Proses</a>
         <a href="#keunggulan" class="nav-link">Kenapa Kami</a>
+        <a href="#ulasan" class="nav-link">Ulasan</a>
       </nav>
 
       <!-- Desktop Action CTA -->
@@ -122,6 +123,7 @@
       <a href="#proses" class="mobile-nav-link">Proses & Kualitas</a>
       <a href="#keunggulan" class="mobile-nav-link">Kenapa Kami</a>
       <a href="#cara-pesan" class="mobile-nav-link">Cara Pesan</a>
+      <a href="#ulasan" class="mobile-nav-link">Ulasan Pelanggan</a>
     </div>
     <div class="mobile-nav-footer">
       <a href="#" class="btn btn-primary btn-full" data-cta="whatsapp-general">
@@ -701,71 +703,102 @@
     </section>
 
     <!-- ========================================================================
-         TESTIMONIAL SECTION (15)
-         Natural, authentic customer voices
+         CUSTOMER REVIEWS SECTION (15)
+         Dynamic Customer Reviews with Supabase persistence & moderation
          ======================================================================== -->
-    <section class="testimonial-section section-spacing">
+    <section class="reviews-section section-spacing" id="ulasan">
       <div class="container">
+        <!-- Section Header -->
         <header class="section-header reveal-on-scroll">
           <div class="section-tag">
             <span class="section-tag-dot" aria-hidden="true"></span>
-            <span>Kata Pelanggan</span>
+            <span>Cerita Pelanggan Kami</span>
           </div>
-          <h2 class="section-title">APA KATA MEREKA?</h2>
-          <p class="section-subtitle">Pengalaman nyata dari mereka yang sudah mencicipi Siomay Online.</p>
+          <h2 class="section-title">CERITA PELANGGAN KAMI</h2>
+          <p class="section-subtitle">Pendapat dan pengalaman pelanggan yang sudah menikmati Siomay kami.</p>
         </header>
 
-        <div class="testimonials-grid">
-          <!-- Testimonial 1 -->
-          <article class="testimonial-card reveal-on-scroll">
-            <div class="testimonial-stars" aria-label="Rating 5 dari 5 bintang">
-              ★★★★★
+        <!-- Reviews Summary Bar & Action Trigger -->
+        <div class="reviews-summary-bar reveal-on-scroll">
+          <div class="reviews-aggregate-card">
+            <div class="aggregate-score-box">
+              <span class="aggregate-score" id="reviewsAverageScore">4.9</span>
+              <span class="aggregate-max">/ 5.0</span>
             </div>
-            <p class="testimonial-quote">
-              “Siomaynya lembut dan bumbu kacangnya enak banget. Bakal order lagi.”
-            </p>
-            <div class="testimonial-author">
-              <div class="author-avatar" aria-hidden="true">B</div>
-              <div class="author-info">
-                <span class="author-name">Budi S.</span>
-                <span class="author-role">Klaten • Pelanggan Tetap</span>
+            <div class="aggregate-details">
+              <div class="aggregate-stars" aria-label="Rating 5 dari 5 bintang">
+                ★★★★★
               </div>
+              <span class="aggregate-count" id="reviewsTotalCount">Memuat ulasan pelanggan...</span>
             </div>
-          </article>
+          </div>
 
-          <!-- Testimonial 2 -->
-          <article class="testimonial-card reveal-on-scroll delay-1">
-            <div class="testimonial-stars" aria-label="Rating 5 dari 5 bintang">
-              ★★★★★
-            </div>
-            <p class="testimonial-quote">
-              “Datangnya masih hangat dan bumbu kacangnya beneran berasa kacang sangrai asli, creamy dan nggak bikin enek. Mantap!”
-            </p>
-            <div class="testimonial-author">
-              <div class="author-avatar" aria-hidden="true">S</div>
-              <div class="author-info">
-                <span class="author-name">Sarah M.</span>
-                <span class="author-role">Klaten Utara • Pesan via WhatsApp</span>
-              </div>
-            </div>
-          </article>
+          <button type="button" class="btn btn-primary btn-write-review" id="btnOpenReviewModal" aria-haspopup="dialog">
+            <span class="btn-icon" aria-hidden="true">✍️</span>
+            <span>Tulis Ulasan</span>
+          </button>
+        </div>
 
-          <!-- Testimonial 3 -->
-          <article class="testimonial-card reveal-on-scroll delay-2">
-            <div class="testimonial-stars" aria-label="Rating 5 dari 5 bintang">
-              ★★★★★
+        <!-- Supabase Unconfigured Banner (Shown only if .env is missing credentials) -->
+        <div class="reviews-unconfigured-banner" id="reviewsUnconfigured" style="display: none;">
+          <div class="unconfigured-badge">Database Supabase Belum Terhubung</div>
+          <p class="unconfigured-text">
+            Fitur ulasan pelanggan siap digunakan secara dinamis dengan Supabase.
+            Silakan tambahkan <code>VITE_SUPABASE_URL</code> dan <code>VITE_SUPABASE_ANON_KEY</code> di file <code>.env</code>.
+          </p>
+        </div>
+
+        <!-- Loading Skeleton State -->
+        <div class="reviews-loading-grid" id="reviewsLoading" aria-label="Sedang memuat ulasan pelanggan...">
+          <div class="review-skeleton-card">
+            <div class="skeleton-line skeleton-stars"></div>
+            <div class="skeleton-line skeleton-text-1"></div>
+            <div class="skeleton-line skeleton-text-2"></div>
+            <div class="skeleton-author">
+              <div class="skeleton-avatar"></div>
+              <div class="skeleton-line skeleton-author-name"></div>
             </div>
-            <p class="testimonial-quote">
-              “Siomay komplitnya porsi kenyang, batagornya tetep renyah walau kena bumbu. Jadi langganan makan siang di kantor.”
-            </p>
-            <div class="testimonial-author">
-              <div class="author-avatar" aria-hidden="true">D</div>
-              <div class="author-info">
-                <span class="author-name">Dimas P.</span>
-                <span class="author-role">Klaten Tengah • Pelanggan Terverifikasi</span>
-              </div>
+          </div>
+          <div class="review-skeleton-card">
+            <div class="skeleton-line skeleton-stars"></div>
+            <div class="skeleton-line skeleton-text-1"></div>
+            <div class="skeleton-line skeleton-text-2"></div>
+            <div class="skeleton-author">
+              <div class="skeleton-avatar"></div>
+              <div class="skeleton-line skeleton-author-name"></div>
             </div>
-          </article>
+          </div>
+          <div class="review-skeleton-card">
+            <div class="skeleton-line skeleton-stars"></div>
+            <div class="skeleton-line skeleton-text-1"></div>
+            <div class="skeleton-line skeleton-text-2"></div>
+            <div class="skeleton-author">
+              <div class="skeleton-avatar"></div>
+              <div class="skeleton-line skeleton-author-name"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State (When no approved reviews exist) -->
+        <div class="reviews-empty-state" id="reviewsEmpty" style="display: none;">
+          <div class="empty-state-icon" aria-hidden="true">💬</div>
+          <h3 class="empty-state-title">Belum Ada Ulasan yang Ditampilkan</h3>
+          <p class="empty-state-desc">
+            Jadilah pelanggan pertama yang membagikan pengalaman menikmati lezatnya Siomay Online!
+          </p>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnOpenReviewEmpty">
+            <span>Tulis Ulasan Pertama</span>
+          </button>
+        </div>
+
+        <!-- Dynamic Reviews Cards Grid (Populated safely via DOM) -->
+        <div class="reviews-grid" id="reviewsGrid"></div>
+
+        <!-- Pagination / Load More Button -->
+        <div class="reviews-pagination">
+          <button type="button" class="btn btn-secondary btn-load-more" id="btnLoadMoreReviews" style="display: none;">
+            <span>Muat ulasan lainnya</span>
+          </button>
         </div>
       </div>
     </section>
@@ -861,6 +894,7 @@
             <li><a href="#cerita" class="footer-link">Tentang Kami</a></li>
             <li><a href="#proses" class="footer-link">Food Journey</a></li>
             <li><a href="#cara-pesan" class="footer-link">Cara Pesan</a></li>
+            <li><a href="#ulasan" class="footer-link">Ulasan Pelanggan</a></li>
           </ul>
         </div>
 
@@ -990,6 +1024,129 @@
       </button>
     </div>
   </aside>
+
+  <!-- ========================================================================
+       CUSTOMER REVIEW SUBMISSION MODAL
+       Direct on public site, interactive star rating, anti-spam & moderation
+       ======================================================================== -->
+  <div class="review-modal-overlay" id="reviewModalOverlay" aria-hidden="true"></div>
+
+  <div 
+    class="review-modal" 
+    id="reviewModal" 
+    role="dialog" 
+    aria-modal="true" 
+    aria-labelledby="reviewModalTitle" 
+    tabindex="-1"
+  >
+    <div class="review-modal-header">
+      <div>
+        <h2 class="review-modal-title" id="reviewModalTitle">Tulis Ulasan Kamu</h2>
+        <p class="review-modal-subtitle">Bagikan pengalamanmu menikmati Siomay Online</p>
+      </div>
+      <button type="button" class="review-modal-close" id="closeReviewModalBtn" aria-label="Tutup form ulasan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="review-modal-body">
+      <!-- Error Alert inside modal -->
+      <div class="form-error-alert" id="reviewFormAlert" role="alert" style="display: none;"></div>
+
+      <!-- Main Review Submission Form -->
+      <form id="reviewForm" class="review-submission-form" onsubmit="return false;" novalidate>
+        
+        <!-- 1. Interactive Star Rating -->
+        <div class="form-group">
+          <label class="form-label" id="starRatingGroupLabel">Beri rating <span class="required-star">*</span></label>
+          <div class="star-picker-container" id="starPicker" role="radiogroup" aria-labelledby="starRatingGroupLabel">
+            <button type="button" class="star-picker-btn active" data-star-val="1" role="radio" aria-checked="true" aria-label="1 bintang">★</button>
+            <button type="button" class="star-picker-btn active" data-star-val="2" role="radio" aria-checked="true" aria-label="2 bintang">★</button>
+            <button type="button" class="star-picker-btn active" data-star-val="3" role="radio" aria-checked="true" aria-label="3 bintang">★</button>
+            <button type="button" class="star-picker-btn active" data-star-val="4" role="radio" aria-checked="true" aria-label="4 bintang">★</button>
+            <button type="button" class="star-picker-btn active" data-star-val="5" role="radio" aria-checked="true" aria-label="5 bintang">★</button>
+          </div>
+          <div class="star-rating-feedback">
+            <span class="star-rating-label" id="starRatingLabel">5 — Luar Biasa Lezat! 🥟</span>
+          </div>
+          <input type="hidden" id="reviewRatingInput" name="rating" value="5">
+        </div>
+
+        <!-- 2. Customer Name -->
+        <div class="form-group">
+          <label for="reviewAuthorName" class="form-label">Nama kamu <span class="required-star">*</span></label>
+          <input 
+            type="text" 
+            id="reviewAuthorName" 
+            class="form-input" 
+            placeholder="Contoh: Budi Santoso" 
+            autocomplete="name" 
+            maxlength="60" 
+            required
+          >
+        </div>
+
+        <!-- 3. Optional Menu Item Selection -->
+        <div class="form-group">
+          <label for="reviewMenuItem" class="form-label">Menu yang dinikmati <span class="optional-tag">(opsional)</span></label>
+          <select id="reviewMenuItem" class="form-input form-select">
+            <option value="">-- Pilih menu yang dinikmati (opsional) --</option>
+          </select>
+        </div>
+
+        <!-- 4. Review Comment Text -->
+        <div class="form-group">
+          <div class="form-label-row">
+            <label for="reviewComment" class="form-label">Tulis pengalaman kamu... <span class="required-star">*</span></label>
+            <span class="char-counter" id="reviewCharCounter">0/1000 karakter</span>
+          </div>
+          <textarea 
+            id="reviewComment" 
+            class="form-input form-textarea" 
+            rows="4" 
+            placeholder="Ceritakan rasa siomay, kelezatan bumbu kacang, atau kepuasan layanan kami..." 
+            minlength="10" 
+            maxlength="1000" 
+            required
+          ></textarea>
+        </div>
+
+        <!-- 5. Anti-spam Honeypot Field (Invisible to human visitors) -->
+        <div class="honeypot-field" style="display: none;" aria-hidden="true">
+          <label for="reviewHoneypot">Jangan diisi jika Anda manusia</label>
+          <input type="text" id="reviewHoneypot" name="website_url" tabindex="-1" autocomplete="off">
+        </div>
+
+        <!-- Moderation Notice -->
+        <div class="review-moderation-notice">
+          <span class="notice-icon" aria-hidden="true">ℹ️</span>
+          <span>Ulasan kamu akan ditinjau oleh tim kami sebelum ditampilkan di website.</span>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="review-form-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnCancelReview">Batal</button>
+          <button type="submit" class="btn btn-primary btn-submit-review" id="btnSubmitReview">
+            <span>Kirim Ulasan</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Success State View (Revealed after successful submission) -->
+      <div class="review-success-state" id="reviewSuccessState" style="display: none;">
+        <div class="success-icon-wrap" aria-hidden="true">
+          <div class="success-check-icon">✓</div>
+        </div>
+        <h3 class="success-title">Ulasan Berhasil Dikirim!</h3>
+        <p class="success-desc" id="reviewSuccessMessage">
+          Terima kasih telah berbagi pengalamanmu. Ulasanmu akan segera ditinjau oleh admin dan ditampilkan di halaman ini.
+        </p>
+        <button type="button" class="btn btn-primary btn-full" id="btnCloseReviewSuccess">
+          <span>Tutup</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Application Logic -->
   <script type="module" src="/main.js"></script>
