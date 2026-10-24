@@ -78,6 +78,13 @@
 
       <!-- Desktop Action CTA -->
       <div class="navbar-action">
+        <!-- Cart Trigger Button in Navbar -->
+        <button class="navbar-cart-btn" id="openCartBtn" aria-label="Buka Keranjang Belanja">
+          <span class="cart-btn-icon" aria-hidden="true">🛒</span>
+          <span class="cart-btn-text">Cart</span>
+          <span class="cart-badge" id="cartBadge">0</span>
+        </button>
+
         <a href="#" class="btn btn-primary btn-sm" data-cta="whatsapp-general">
           <span>Pesan via WhatsApp</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
@@ -97,6 +104,10 @@
   <div class="mobile-nav" id="mobileNav" aria-label="Navigasi Mobile">
     <div class="mobile-nav-header">
       <span class="brand-logo"><span class="brand-wordmark">SIOMAY</span><span class="brand-dot">.</span></span>
+      <button type="button" class="mobile-nav-cart-pill" id="mobileNavCartBtn">
+        <span>🛒 Keranjang</span>
+        <span class="cart-badge">0</span>
+      </button>
     </div>
     <div class="mobile-nav-links">
       <a href="#hero" class="mobile-nav-link">Home</a>
@@ -222,7 +233,7 @@
           <p class="section-subtitle">Pilihan sederhana dengan bumbu kacang resep khas. Dibuat fresh setiap hari.</p>
         </header>
 
-        <div class="menu-grid">
+        <div class="menu-grid" id="menuGrid">
           <!-- Item 1: Siomay Original -->
           <article class="menu-card reveal-on-scroll">
             <div class="menu-card-image-wrap">
@@ -868,6 +879,111 @@
       </div>
     </div>
   </footer>
+
+  <!-- ========================================================================
+       CART DRAWER (Desktop Side Drawer / Mobile Bottom Sheet)
+       ======================================================================== -->
+  <div class="cart-drawer-overlay" id="cartOverlay" aria-hidden="true"></div>
+
+  <aside class="cart-drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-labelledby="cartDrawerTitle" tabindex="-1">
+    <div class="cart-drawer-header">
+      <div class="cart-drawer-title-wrap">
+        <span class="cart-drawer-icon" aria-hidden="true">🛒</span>
+        <h2 class="cart-drawer-title" id="cartDrawerTitle">Pesanan Kamu</h2>
+        <span class="cart-drawer-count" id="drawerCartCount">0 item</span>
+      </div>
+      <button type="button" class="cart-drawer-close" id="closeCartBtn" aria-label="Tutup Keranjang">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="cart-drawer-body" id="cartDrawerBody">
+      <!-- Items list or empty state rendered dynamically -->
+      <div class="cart-items-list" id="cartItemsList"></div>
+
+      <!-- Customer Form (shown when cart has items) -->
+      <div class="cart-customer-section" id="cartCustomerSection" style="display: none;">
+        <div class="cart-section-title">
+          <span class="step-circle" aria-hidden="true">1</span>
+          <span>Informasi Pengantaran</span>
+        </div>
+
+        <div class="form-error-alert" id="formErrorAlert" role="alert" style="display: none;"></div>
+
+        <form id="orderForm" class="cart-order-form" onsubmit="return false;" novalidate>
+          <div class="form-group">
+            <label for="customerName" class="form-label">Nama Lengkap <span class="required-star">*</span></label>
+            <input type="text" id="customerName" class="form-input" placeholder="Nama kamu" autocomplete="name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="customerPhone" class="form-label">Nomor WhatsApp <span class="required-star">*</span></label>
+            <input type="tel" id="customerPhone" class="form-input" placeholder="08xxxxxxxxxx" autocomplete="tel" required>
+          </div>
+
+          <div class="form-group">
+            <label for="customerAddress" class="form-label">Alamat Lengkap Pengantaran <span class="required-star">*</span></label>
+            <textarea id="customerAddress" class="form-input form-textarea" rows="2" placeholder="Nama jalan, nomor rumah, RT/RW, atau patokan lokasi" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="customerNote" class="form-label">Catatan Pesanan <span class="optional-tag">(opsional)</span></label>
+            <input type="text" id="customerNote" class="form-input" placeholder="Contoh: tidak pedas, sambal dipisah">
+          </div>
+        </form>
+      </div>
+
+      <!-- Success state (after WhatsApp triggered) -->
+      <div class="cart-success-view" id="cartSuccessView" style="display: none;">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <h3 class="success-title">Pesanan Siap Dikirim ke WhatsApp!</h3>
+        <p class="success-desc">
+          Format pesanan kamu telah disiapkan. Silakan lanjutkan percakapan dengan admin untuk konfirmasi ketersediaan dan biaya delivery.
+        </p>
+        <div class="success-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnBackToOrder">Ubah Pesanan</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnReopenWa">Kirim Ulang WhatsApp</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart Footer / Summary -->
+    <div class="cart-drawer-footer" id="cartDrawerFooter" style="display: none;">
+      <div class="cart-summary">
+        <div class="summary-row">
+          <span class="summary-label">Subtotal</span>
+          <span class="summary-val" id="summarySubtotal">Rp0</span>
+        </div>
+        <div class="summary-row summary-delivery">
+          <span class="summary-label">Biaya Delivery</span>
+          <span class="summary-val summary-delivery-note">Dikonfirmasi via WhatsApp</span>
+        </div>
+        <div class="summary-row summary-total">
+          <span class="summary-label">Total Pesanan</span>
+          <span class="summary-val summary-total-val" id="summaryTotal">Rp0</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-full btn-submit-order" id="submitOrderBtn">
+        <span>Pesan via WhatsApp →</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Mobile Sticky Order Pill (Fixed Bottom Bar on Mobile) -->
+  <aside class="mobile-sticky-order" id="mobileStickyOrder" aria-label="Ringkasan Pesanan">
+    <div class="mobile-sticky-inner">
+      <div class="mobile-sticky-info">
+        <span class="mobile-sticky-icon" aria-hidden="true">🛒</span>
+        <span class="mobile-sticky-count" id="stickyCount">0 item</span>
+        <span class="mobile-sticky-sep" aria-hidden="true">•</span>
+        <span class="mobile-sticky-total" id="stickyTotal">Rp0</span>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm btn-sticky-action" id="stickyViewCartBtn">
+        <span>Lihat Pesanan →</span>
+      </button>
+    </div>
+  </aside>
 
   <!-- Application Logic -->
   <script type="module" src="/main.js"></script>

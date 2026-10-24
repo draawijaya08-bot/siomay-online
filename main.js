@@ -1,91 +1,786 @@
 /**
- * SIOMAY ONLINE — MAIN APPLICATION SCRIPT
- * Handles WhatsApp link generation, sticky navbar, mobile menu,
- * scroll reveals, and active nav highlights.
+ * SIOMAY ONLINE — MAIN APPLICATION SCRIPT & ORDER FLOW
+ * 
+ * Architecture:
+ * 1. CONFIG: Centralized store configuration & WhatsApp number.
+ * 2. PRODUCTS: Single source of truth for all menu items.
+ * 3. CART: State management, localStorage persistence, integer calculations.
+ * 4. UI RENDERERS: Menu cards, Cart Drawer, Badges, Mobile Sticky Order Bar.
+ * 5. VALIDATION & ORDER: Form checking, friendly errors, WhatsApp message builder.
+ * 6. SITE INTERACTION: Navbar scroll, mobile nav, scroll reveals, active spy.
  */
 
 // =============================================================================
-// 1. BRAND CONFIGURATION (Placeholder mudah diganti)
+// 1. BRAND CONFIGURATION
 // =============================================================================
 export const CONFIG = {
   brandName: "Siomay Online",
   
   /**
    * Nomor WhatsApp resmi untuk menerima pesanan pelanggan.
-   * Ganti "XXXXXXXXXXX" dengan format nomor internasional tanpa tanda plus (+),
-   * misalnya: "6281234567890"
+   * Format: Nomor internasional tanpa tanda plus (+), diawali 62.
+   * Ganti "628XXXXXXXXXX" dengan nomor WhatsApp bisnismu yang sebenarnya.
    */
-  whatsappNumber: "XXXXXXXXXXX",
+  whatsappNumber: "628XXXXXXXXXX",
   
   whatsappBaseUrl: "https://wa.me/",
   
-  defaultOrderMessage: "Halo Siomay Online, saya ingin pesan siomay fresh untuk diantar.",
-  
-  /**
-   * Template pesan saat memesan produk spesifik
-   */
-  createProductMessage: (productName, price) => {
-    return `Halo Siomay Online, saya mau pesan:\n• Produk: ${productName}\n• Harga: ${price}\n\nMohon info ketersediaan dan estimasi pengirimannya ya. Terima kasih!`;
-  }
+  defaultOrderMessage: "Halo Siomay Online, saya ingin pesan siomay fresh untuk diantar."
 };
 
-/**
- * Menghasilkan link WhatsApp lengkap dengan pesan yang di-encode
- */
-export function getWhatsAppUrl(message = CONFIG.defaultOrderMessage) {
-  const cleanNumber = CONFIG.whatsappNumber.replace(/[^0-9]/g, '');
-  const encodedText = encodeURIComponent(message);
-  return `${CONFIG.whatsappBaseUrl}${cleanNumber}?text=${encodedText}`;
+// =============================================================================
+// 2. PRODUCT DATA (Single Source of Truth)
+// =============================================================================
+export const PRODUCTS = [
+  {
+    id: "siomay-original",
+    name: "Siomay Original",
+    price: 15000,
+    desc: "Siomay lembut dengan siraman bumbu kacang khas dan kecap manis gurih.",
+    image: "/images/menu-original.jpg",
+    badge: "Paling Populer",
+    portion: "Porsi Mantap",
+    rating: 4.9
+  },
+  {
+    id: "siomay-komplit",
+    name: "Siomay Komplit",
+    price: 25000,
+    desc: "Siomay, tahu, kentang, telur, dan bumbu kacang khas yang melimpah.",
+    image: "/images/menu-komplit.jpg",
+    badge: "BEST SELLER",
+    isBestSeller: true,
+    portion: "Paling Lengkap",
+    rating: 4.9
+  },
+  {
+    id: "batagor",
+    name: "Batagor",
+    price: 15000,
+    desc: "Batagor renyah keemasan dengan adonan gurih dan bumbu kacang kental.",
+    image: "/images/menu-batagor.jpg",
+    portion: "Crispy & Gurih",
+    rating: 4.8
+  },
+  {
+    id: "tahu",
+    name: "Tahu",
+    price: 12000,
+    desc: "Tahu lembut isi adonan ikan tenggiri gurih kukus hangat kaya rasa.",
+    image: "/images/menu-tahu.jpg",
+    portion: "Kukus Hangat",
+    rating: 4.8
+  },
+  {
+    id: "kentang",
+    name: "Kentang",
+    price: 12000,
+    desc: "Kentang kukus pulen empuk disiram bumbu kacang gurih dan jeruk limau.",
+    image: "/images/menu-kentang.jpg",
+    portion: "Pulen & Empuk",
+    rating: 4.7
+  },
+  {
+    id: "paket-hemat",
+    name: "Paket Hemat",
+    price: 35000,
+    desc: "Kombinasi siomay, batagor, tahu & telur untuk santap puas bersama teman atau keluarga.",
+    image: "/images/menu-paket-hemat.jpg",
+    badge: "Paling Hemat",
+    portion: "Porsi Kenyang",
+    rating: 4.9
+  }
+];
+
+// Helper: Format Rupiah integer
+export function formatRupiah(amount) {
+  const cleanInt = Math.round(Number(amount) || 0);
+  return "Rp" + cleanInt.toLocaleString("id-ID");
+}
+
+// Helper: Get product by ID
+export function getProductById(id) {
+  return PRODUCTS.find(p => p.id === id) || null;
 }
 
 // =============================================================================
-// 2. DOM CONTENT LOADED & INITIALIZATION
+// 3. CART STATE & LOCALSTORAGE PERSISTENCE
 // =============================================================================
-document.addEventListener('DOMContentLoaded', () => {
-  initWhatsAppLinks();
-  initNavbarScroll();
-  initMobileMenu();
-  initScrollSpy();
-  initScrollReveal();
-  initProductOrderButtons();
-});
+const CART_STORAGE_KEY = "siomay-cart";
+
+/**
+ * Cart Item Structure: { id: string, quantity: number }
+ * Only store ID and quantity; prices always reference PRODUCTS to avoid tampering.
+ */
+let cart = loadCartFromStorage();
+
+function loadCartFromStorage() {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter(item => {
+        return item && 
+               typeof item.id === "string" && 
+               typeof item.quantity === "number" && 
+               item.quantity > 0 &&
+               getProductById(item.id);
+      });
+    }
+  } catch (err) {
+    console.warn("Gagal memuat keranjang dari localStorage:", err);
+  }
+  return [];
+}
+
+function saveCartToStorage() {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+  } catch (err) {
+    console.warn("Gagal menyimpan keranjang ke localStorage:", err);
+  }
+}
+
+/**
+ * Hitung total item dan subtotal harga keranjang
+ */
+export function getCartSummary() {
+  let itemCount = 0;
+  let subtotal = 0;
+  const detailedItems = [];
+
+  cart.forEach(item => {
+    const product = getProductById(item.id);
+    if (product) {
+      const itemSubtotal = product.price * item.quantity;
+      itemCount += item.quantity;
+      subtotal += itemSubtotal;
+      detailedItems.push({
+        id: product.id,
+        product,
+        quantity: item.quantity,
+        subtotal: itemSubtotal
+      });
+    }
+  });
+
+  return {
+    items: detailedItems,
+    itemCount,
+    subtotal,
+    total: subtotal // Delivery fee dikonfirmasi via WA
+  };
+}
+
+/**
+ * Tambah produk ke keranjang
+ */
+export function addToCart(productId, quantity = 1) {
+  const product = getProductById(productId);
+  if (!product) return;
+
+  const existingIndex = cart.findIndex(item => item.id === productId);
+  if (existingIndex >= 0) {
+    cart[existingIndex].quantity += quantity;
+  } else {
+    cart.push({ id: productId, quantity: Math.max(1, quantity) });
+  }
+
+  saveCartToStorage();
+  updateCartUI();
+  triggerCartButtonFeedback(productId);
+}
+
+/**
+ * Ubah quantity (+1 atau -1)
+ */
+export function updateCartQuantity(productId, delta) {
+  const index = cart.findIndex(item => item.id === productId);
+  if (index === -1) return;
+
+  const newQty = cart[index].quantity + delta;
+  if (newQty <= 0) {
+    cart.splice(index, 1);
+  } else {
+    cart[index].quantity = newQty;
+  }
+
+  saveCartToStorage();
+  updateCartUI();
+}
+
+/**
+ * Hapus produk dari keranjang
+ */
+export function removeFromCart(productId) {
+  cart = cart.filter(item => item.id !== productId);
+  saveCartToStorage();
+  updateCartUI();
+}
+
+/**
+ * Kosongkan keranjang
+ */
+export function clearCart() {
+  cart = [];
+  saveCartToStorage();
+  updateCartUI();
+}
 
 // =============================================================================
-// 3. WHATSAPP LINK BINDING
+// 4. WHATSAPP LINK & MESSAGE GENERATION
 // =============================================================================
-function initWhatsAppLinks() {
-  const genericWhatsAppBtns = document.querySelectorAll('[data-cta="whatsapp-general"]');
-  const genericUrl = getWhatsAppUrl(CONFIG.defaultOrderMessage);
+export function getCleanWhatsAppNumber() {
+  return CONFIG.whatsappNumber.replace(/[^0-9A-Za-z]/g, "");
+}
 
-  genericWhatsAppBtns.forEach((btn) => {
-    btn.setAttribute('href', genericUrl);
-    btn.setAttribute('target', '_blank');
-    btn.setAttribute('rel', 'noopener noreferrer');
+export function getWhatsAppBaseUrl() {
+  const cleanNumber = getCleanWhatsAppNumber();
+  return `${CONFIG.whatsappBaseUrl}${cleanNumber}`;
+}
+
+/**
+ * Generate formatted WhatsApp message as specified:
+ * 
+ * Halo Siomay Online 👋
+ * 
+ * Saya ingin melakukan pemesanan:
+ * 
+ * 1. Siomay Komplit
+ *    2 x Rp25.000 = Rp50.000
+ * 
+ * ----------------
+ * Total: Rp50.000
+ * 
+ * Nama: ...
+ * No. WhatsApp: ...
+ * Alamat: ...
+ * Catatan: ...
+ */
+export function buildWhatsAppOrderMessage(cartSummary, customer) {
+  let message = `Halo ${CONFIG.brandName} 👋\n\n`;
+  message += `Saya ingin melakukan pemesanan:\n\n`;
+
+  cartSummary.items.forEach((item, index) => {
+    message += `${index + 1}. ${item.product.name}\n`;
+    message += `   ${item.quantity} x ${formatRupiah(item.product.price)} = ${formatRupiah(item.subtotal)}\n\n`;
+  });
+
+  message += `----------------\n\n`;
+  message += `Total: ${formatRupiah(cartSummary.total)}\n\n`;
+  message += `Nama:\n${customer.name}\n\n`;
+  message += `No. WhatsApp:\n${customer.phone}\n\n`;
+  message += `Alamat:\n${customer.address}\n\n`;
+
+  if (customer.note && customer.note.trim()) {
+    message += `Catatan:\n${customer.note.trim()}\n\n`;
+  }
+
+  message += `Terima kasih.`;
+  return message;
+}
+
+export function buildWhatsAppOrderUrl(cartSummary, customer) {
+  const text = buildWhatsAppOrderMessage(cartSummary, customer);
+  const cleanNumber = getCleanWhatsAppNumber();
+  return `${CONFIG.whatsappBaseUrl}${cleanNumber}?text=${encodeURIComponent(text)}`;
+}
+
+// =============================================================================
+// 5. DOM INITIALIZATION
+// =============================================================================
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
+    renderMenuCards();
+    initCartDrawer();
+    updateCartUI();
+    initWhatsAppLinks();
+    initNavbarScroll();
+    initMobileMenu();
+    initScrollSpy();
+    initScrollReveal();
   });
 }
 
-function initProductOrderButtons() {
-  const productOrderBtns = document.querySelectorAll('[data-product-order]');
+// =============================================================================
+// 6. RENDER MENU CARDS FROM PRODUCTS
+// =============================================================================
+function renderMenuCards() {
+  const grid = document.getElementById("menuGrid");
+  if (!grid) return;
 
-  productOrderBtns.forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+  grid.innerHTML = PRODUCTS.map((product, idx) => {
+    const isHighlight = product.isBestSeller ? "menu-card-highlight" : "";
+    const delayClass = idx % 3 === 1 ? "delay-1" : idx % 3 === 2 ? "delay-2" : "";
+
+    let badgeHtml = "";
+    if (product.badge) {
+      let badgeClass = "badge-clean";
+      if (product.isBestSeller) badgeClass = "badge-bestseller";
+      else if (product.badge.toLowerCase().includes("hemat")) badgeClass = "badge-savings";
+      badgeHtml = `<span class="menu-badge ${badgeClass}">${product.badge}</span>`;
+    }
+
+    return `
+      <article class="menu-card ${isHighlight} reveal-on-scroll ${delayClass}" data-product-card-id="${product.id}">
+        <div class="menu-card-image-wrap">
+          ${badgeHtml}
+          <img 
+            src="${product.image}" 
+            alt="${product.name} — ${product.desc}" 
+            class="menu-card-image"
+            loading="lazy"
+            width="400" 
+            height="300"
+          >
+        </div>
+        <div class="menu-card-body">
+          <div class="menu-card-meta">
+            <span class="menu-rating">★ ${product.rating || "4.9"}</span>
+            <span class="menu-meta-sep">•</span>
+            <span class="menu-portion">${product.portion || "Porsi Mantap"}</span>
+          </div>
+          <h3 class="menu-card-title">${product.name}</h3>
+          <p class="menu-card-desc">${product.desc}</p>
+          <div class="menu-card-footer">
+            <div class="menu-card-price">
+              <span class="price-label">Harga</span>
+              <span class="price-amount">${formatRupiah(product.price)}</span>
+            </div>
+            <button 
+              type="button"
+              class="btn-order-item ${product.isBestSeller ? 'btn-order-primary' : ''}" 
+              data-add-to-cart="${product.id}"
+              aria-label="Tambah ${product.name} seharga ${formatRupiah(product.price)}"
+            >
+              <span class="btn-order-icon" aria-hidden="true">+</span>
+              <span class="btn-order-text">Tambah</span>
+            </button>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  // Bind click listener for '+ Tambah'
+  grid.querySelectorAll("[data-add-to-cart]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
       e.preventDefault();
-      const productName = btn.getAttribute('data-product-name') || 'Siomay';
-      const productPrice = btn.getAttribute('data-product-price') || '';
+      const productId = btn.getAttribute("data-add-to-cart");
+      addToCart(productId, 1);
+    });
+  });
+}
+
+function triggerCartButtonFeedback(productId) {
+  const btn = document.querySelector(`[data-add-to-cart="${productId}"]`);
+  if (!btn) return;
+
+  const textSpan = btn.querySelector(".btn-order-text");
+  const iconSpan = btn.querySelector(".btn-order-icon");
+  const originalText = textSpan ? textSpan.textContent : "Tambah";
+  const originalIcon = iconSpan ? iconSpan.textContent : "+";
+
+  if (textSpan) textSpan.textContent = "Ditambahkan";
+  if (iconSpan) iconSpan.textContent = "✓";
+  btn.classList.add("btn-added-feedback");
+
+  // Subtle bounce on cart badge
+  const badges = document.querySelectorAll(".cart-badge");
+  badges.forEach(b => {
+    b.classList.remove("badge-bump");
+    // force reflow
+    void b.offsetWidth;
+    b.classList.add("badge-bump");
+  });
+
+  setTimeout(() => {
+    if (textSpan) textSpan.textContent = originalText;
+    if (iconSpan) iconSpan.textContent = originalIcon;
+    btn.classList.remove("btn-added-feedback");
+  }, 1100);
+}
+
+// =============================================================================
+// 7. CART DRAWER & UI UPDATES
+// =============================================================================
+function initCartDrawer() {
+  const openCartBtn = document.getElementById("openCartBtn");
+  const mobileNavCartBtn = document.getElementById("mobileNavCartBtn");
+  const stickyViewCartBtn = document.getElementById("stickyViewCartBtn");
+  const closeCartBtn = document.getElementById("closeCartBtn");
+  const cartOverlay = document.getElementById("cartOverlay");
+  const cartDrawer = document.getElementById("cartDrawer");
+  const submitOrderBtn = document.getElementById("submitOrderBtn");
+  const btnBackToOrder = document.getElementById("btnBackToOrder");
+  const btnReopenWa = document.getElementById("btnReopenWa");
+
+  const openDrawer = () => {
+    if (!cartDrawer) return;
+    cartDrawer.classList.add("open");
+    if (cartOverlay) cartOverlay.classList.add("open");
+    document.body.style.overflow = "hidden";
+    cartDrawer.focus();
+  };
+
+  const closeDrawer = () => {
+    if (!cartDrawer) return;
+    cartDrawer.classList.remove("open");
+    if (cartOverlay) cartOverlay.classList.remove("open");
+    document.body.style.overflow = "";
+  };
+
+  if (openCartBtn) openCartBtn.addEventListener("click", openDrawer);
+  if (mobileNavCartBtn) {
+    mobileNavCartBtn.addEventListener("click", () => {
+      const mobileNav = document.getElementById("mobileNav");
+      if (mobileNav && mobileNav.classList.contains("open")) {
+        const hamburgerBtn = document.getElementById("hamburgerBtn");
+        if (hamburgerBtn) hamburgerBtn.click();
+      }
+      openDrawer();
+    });
+  }
+  if (stickyViewCartBtn) stickyViewCartBtn.addEventListener("click", openDrawer);
+  if (closeCartBtn) closeCartBtn.addEventListener("click", closeDrawer);
+  if (cartOverlay) cartOverlay.addEventListener("click", closeDrawer);
+
+  // Close on Escape key
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && cartDrawer && cartDrawer.classList.contains("open")) {
+      closeDrawer();
+    }
+  });
+
+  // Handle Order Submit via WhatsApp
+  if (submitOrderBtn) {
+    submitOrderBtn.addEventListener("click", handleOrderSubmit);
+  }
+
+  // Handle back to order from success view
+  if (btnBackToOrder) {
+    btnBackToOrder.addEventListener("click", () => {
+      const successView = document.getElementById("cartSuccessView");
+      const customerSection = document.getElementById("cartCustomerSection");
+      const itemsList = document.getElementById("cartItemsList");
+      const footer = document.getElementById("cartDrawerFooter");
       
-      const message = CONFIG.createProductMessage(productName, productPrice);
-      const url = getWhatsAppUrl(message);
-      
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (successView) successView.style.display = "none";
+      if (customerSection) customerSection.style.display = "block";
+      if (itemsList) itemsList.style.display = "flex";
+      if (footer) footer.style.display = "block";
+    });
+  }
+
+  // Handle reopen WhatsApp
+  if (btnReopenWa) {
+    btnReopenWa.addEventListener("click", () => {
+      const lastUrl = btnReopenWa.getAttribute("data-last-wa-url");
+      if (lastUrl) {
+        window.open(lastUrl, "_blank", "noopener,noreferrer");
+      }
+    });
+  }
+
+  // Clear validation errors when inputs change
+  ["customerName", "customerPhone", "customerAddress"].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener("input", () => {
+        hideFormError();
+        input.classList.remove("input-error");
+      });
+    }
+  });
+}
+
+/**
+ * Re-render cart elements: badges, drawer list, totals, mobile sticky bar
+ */
+export function updateCartUI() {
+  const summary = getCartSummary();
+
+  // 1. Update badges (Navbar & Mobile)
+  const cartBadges = document.querySelectorAll(".cart-badge");
+  cartBadges.forEach(badge => {
+    badge.textContent = summary.itemCount;
+    if (summary.itemCount > 0) {
+      badge.classList.add("has-items");
+    } else {
+      badge.classList.remove("has-items");
+    }
+  });
+
+  // 2. Update Drawer Header Count
+  const drawerCount = document.getElementById("drawerCartCount");
+  if (drawerCount) {
+    drawerCount.textContent = `${summary.itemCount} item`;
+  }
+
+  // 3. Update Summary Numbers
+  const subtotalEl = document.getElementById("summarySubtotal");
+  const totalEl = document.getElementById("summaryTotal");
+  if (subtotalEl) subtotalEl.textContent = formatRupiah(summary.subtotal);
+  if (totalEl) totalEl.textContent = formatRupiah(summary.total);
+
+  // 4. Update Mobile Sticky Order Pill
+  const stickyBar = document.getElementById("mobileStickyOrder");
+  const stickyCount = document.getElementById("stickyCount");
+  const stickyTotal = document.getElementById("stickyTotal");
+
+  if (stickyBar && stickyCount && stickyTotal) {
+    if (summary.itemCount > 0) {
+      stickyBar.classList.add("visible");
+      stickyCount.textContent = `${summary.itemCount} item`;
+      stickyTotal.textContent = formatRupiah(summary.total);
+    } else {
+      stickyBar.classList.remove("visible");
+    }
+  }
+
+  // 5. Render Drawer Item List
+  renderCartDrawerItems(summary);
+}
+
+function renderCartDrawerItems(summary) {
+  const itemsContainer = document.getElementById("cartItemsList");
+  const customerSection = document.getElementById("cartCustomerSection");
+  const footer = document.getElementById("cartDrawerFooter");
+  const successView = document.getElementById("cartSuccessView");
+
+  if (!itemsContainer) return;
+
+  // If in success state, don't overwrite view unless empty
+  if (successView && successView.style.display === "block" && summary.itemCount === 0) {
+    successView.style.display = "none";
+  }
+
+  if (summary.itemCount === 0) {
+    itemsContainer.innerHTML = `
+      <div class="cart-empty-state">
+        <div class="empty-icon" aria-hidden="true">🥟</div>
+        <h3 class="empty-title">Keranjang Belanja Masih Kosong</h3>
+        <p class="empty-desc">Pilih menu favoritmu dan rasakan gurihnya siomay fresh bumbu kacang khas kami.</p>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnExploreMenu">Lihat Menu Favorit</button>
+      </div>
+    `;
+
+    const btnExplore = document.getElementById("btnExploreMenu");
+    if (btnExplore) {
+      btnExplore.addEventListener("click", () => {
+        const closeBtn = document.getElementById("closeCartBtn");
+        if (closeBtn) closeBtn.click();
+        const menuEl = document.getElementById("menu");
+        if (menuEl) menuEl.scrollIntoView({ behavior: "smooth" });
+      });
+    }
+
+    if (customerSection) customerSection.style.display = "none";
+    if (footer) footer.style.display = "none";
+    return;
+  }
+
+  // Show form & footer when cart has items
+  if (customerSection && (!successView || successView.style.display !== "block")) {
+    customerSection.style.display = "block";
+  }
+  if (footer && (!successView || successView.style.display !== "block")) {
+    footer.style.display = "block";
+  }
+
+  itemsContainer.innerHTML = summary.items.map(item => {
+    return `
+      <div class="cart-item" data-cart-item-id="${item.id}">
+        <img src="${item.product.image}" alt="${item.product.name}" class="cart-item-img" width="64" height="64">
+        <div class="cart-item-details">
+          <div class="cart-item-top">
+            <h4 class="cart-item-name">${item.product.name}</h4>
+            <button 
+              type="button" 
+              class="cart-item-remove" 
+              data-remove-item="${item.id}"
+              aria-label="Hapus ${item.product.name} dari keranjang"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="cart-item-unit-price">${formatRupiah(item.product.price)}</div>
+          <div class="cart-item-bottom">
+            <div class="cart-item-qty-control" role="group" aria-label="Kuantitas ${item.product.name}">
+              <button 
+                type="button" 
+                class="qty-btn" 
+                data-qty-action="decrease" 
+                data-qty-id="${item.id}"
+                aria-label="Kurangi 1 ${item.product.name}"
+              >−</button>
+              <span class="qty-count" aria-live="polite">${item.quantity}</span>
+              <button 
+                type="button" 
+                class="qty-btn" 
+                data-qty-action="increase" 
+                data-qty-id="${item.id}"
+                aria-label="Tambah 1 ${item.product.name}"
+              >+</button>
+            </div>
+            <div class="cart-item-subtotal">${formatRupiah(item.subtotal)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Bind quantity buttons
+  itemsContainer.querySelectorAll("[data-qty-action]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-qty-id");
+      const action = btn.getAttribute("data-qty-action");
+      if (action === "increase") updateCartQuantity(id, 1);
+      if (action === "decrease") updateCartQuantity(id, -1);
+    });
+  });
+
+  // Bind remove buttons
+  itemsContainer.querySelectorAll("[data-remove-item]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-remove-item");
+      removeFromCart(id);
     });
   });
 }
 
 // =============================================================================
-// 4. NAVBAR STICKY & SCROLL EFFECT
+// 8. FORM VALIDATION & SUBMIT TO WHATSAPP
+// =============================================================================
+function handleOrderSubmit(e) {
+  if (e) e.preventDefault();
+
+  const summary = getCartSummary();
+  if (summary.itemCount === 0) {
+    showFormError("Keranjang belanja kamu masih kosong. Silakan pilih menu terlebih dahulu.");
+    return;
+  }
+
+  const nameInput = document.getElementById("customerName");
+  const phoneInput = document.getElementById("customerPhone");
+  const addressInput = document.getElementById("customerAddress");
+  const noteInput = document.getElementById("customerNote");
+
+  const name = nameInput ? nameInput.value.trim() : "";
+  const phone = phoneInput ? phoneInput.value.trim() : "";
+  const address = addressInput ? addressInput.value.trim() : "";
+  const note = noteInput ? noteInput.value.trim() : "";
+
+  // Validations
+  if (!name) {
+    showFormError("Nama kamu belum diisi.");
+    if (nameInput) {
+      nameInput.classList.add("input-error");
+      nameInput.focus();
+    }
+    return;
+  }
+
+  if (!phone) {
+    showFormError("Nomor WhatsApp kamu belum diisi.");
+    if (phoneInput) {
+      phoneInput.classList.add("input-error");
+      phoneInput.focus();
+    }
+    return;
+  }
+
+  // Basic phone sanity check (minimum digits)
+  const cleanPhone = phone.replace(/[^0-9]/g, "");
+  if (cleanPhone.length < 8) {
+    showFormError("Format nomor WhatsApp belum lengkap (minimal 8 angka).");
+    if (phoneInput) {
+      phoneInput.classList.add("input-error");
+      phoneInput.focus();
+    }
+    return;
+  }
+
+  if (!address) {
+    showFormError("Alamat lengkap pengantaran belum diisi.");
+    if (addressInput) {
+      addressInput.classList.add("input-error");
+      addressInput.focus();
+    }
+    return;
+  }
+
+  hideFormError();
+
+  const customer = { name, phone, address, note };
+  const waUrl = buildWhatsAppOrderUrl(summary, customer);
+
+  // Transition to Success State in Cart
+  showOrderSuccessState(waUrl);
+
+  // Open WhatsApp in new tab
+  window.open(waUrl, "_blank", "noopener,noreferrer");
+}
+
+function showFormError(message) {
+  const alertEl = document.getElementById("formErrorAlert");
+  if (!alertEl) return;
+  alertEl.textContent = message;
+  alertEl.style.display = "block";
+  alertEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function hideFormError() {
+  const alertEl = document.getElementById("formErrorAlert");
+  if (alertEl) {
+    alertEl.textContent = "";
+    alertEl.style.display = "none";
+  }
+}
+
+function showOrderSuccessState(waUrl) {
+  const customerSection = document.getElementById("cartCustomerSection");
+  const itemsList = document.getElementById("cartItemsList");
+  const footer = document.getElementById("cartDrawerFooter");
+  const successView = document.getElementById("cartSuccessView");
+  const btnReopenWa = document.getElementById("btnReopenWa");
+
+  if (customerSection) customerSection.style.display = "none";
+  if (itemsList) itemsList.style.display = "none";
+  if (footer) footer.style.display = "none";
+
+  if (successView) {
+    successView.style.display = "block";
+    successView.scrollIntoView({ behavior: "smooth" });
+  }
+
+  if (btnReopenWa) {
+    btnReopenWa.setAttribute("data-last-wa-url", waUrl);
+  }
+}
+
+// =============================================================================
+// 9. GENERIC WHATSAPP LINK BINDING (For Hero, Top Strip, Footer)
+// =============================================================================
+function initWhatsAppLinks() {
+  const genericWhatsAppBtns = document.querySelectorAll('[data-cta="whatsapp-general"]');
+  const genericUrl = `${getWhatsAppBaseUrl()}?text=${encodeURIComponent(CONFIG.defaultOrderMessage)}`;
+
+  genericWhatsAppBtns.forEach((btn) => {
+    btn.setAttribute("href", genericUrl);
+    btn.setAttribute("target", "_blank");
+    btn.setAttribute("rel", "noopener noreferrer");
+  });
+}
+
+// =============================================================================
+// 10. NAVBAR STICKY & SCROLL EFFECT
 // =============================================================================
 function initNavbarScroll() {
-  const navbar = document.querySelector('.navbar');
+  const navbar = document.querySelector(".navbar");
   if (!navbar) return;
 
   let ticking = false;
@@ -93,10 +788,10 @@ function initNavbarScroll() {
   const onScroll = () => {
     if (!ticking) {
       window.requestAnimationFrame(() => {
-        if (window.scrollY > 30) {
-          navbar.classList.add('scrolled');
+        if (window.scrollY > 20) {
+          navbar.classList.add("scrolled");
         } else {
-          navbar.classList.remove('scrolled');
+          navbar.classList.remove("scrolled");
         }
         ticking = false;
       });
@@ -104,67 +799,65 @@ function initNavbarScroll() {
     }
   };
 
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll(); // initial check
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
 }
 
 // =============================================================================
-// 5. MOBILE HAMBURGER MENU & DRAWER
+// 11. MOBILE HAMBURGER MENU & DRAWER
 // =============================================================================
 function initMobileMenu() {
-  const hamburgerBtn = document.getElementById('hamburgerBtn');
-  const mobileNav = document.getElementById('mobileNav');
-  const mobileLinks = document.querySelectorAll('.mobile-nav-link');
+  const hamburgerBtn = document.getElementById("hamburgerBtn");
+  const mobileNav = document.getElementById("mobileNav");
+  const mobileLinks = document.querySelectorAll(".mobile-nav-link");
 
   if (!hamburgerBtn || !mobileNav) return;
 
   const toggleMenu = () => {
-    const isOpen = hamburgerBtn.classList.toggle('active');
-    mobileNav.classList.toggle('open');
-    hamburgerBtn.setAttribute('aria-expanded', isOpen);
-    document.body.style.overflow = isOpen ? 'hidden' : '';
+    const isOpen = hamburgerBtn.classList.toggle("active");
+    mobileNav.classList.toggle("open");
+    hamburgerBtn.setAttribute("aria-expanded", isOpen);
+    document.body.style.overflow = isOpen ? "hidden" : "";
   };
 
-  hamburgerBtn.addEventListener('click', toggleMenu);
+  hamburgerBtn.addEventListener("click", toggleMenu);
 
   mobileLinks.forEach((link) => {
-    link.addEventListener('click', () => {
-      if (mobileNav.classList.contains('open')) {
+    link.addEventListener("click", () => {
+      if (mobileNav.classList.contains("open")) {
         toggleMenu();
       }
     });
   });
 
-  // Close on Escape key
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && mobileNav.classList.contains('open')) {
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && mobileNav.classList.contains("open")) {
       toggleMenu();
     }
   });
 }
 
 // =============================================================================
-// 6. SCROLL REVEAL ANIMATIONS (INTERSECTION OBSERVER)
+// 12. SCROLL REVEAL ANIMATIONS (INTERSECTION OBSERVER)
 // =============================================================================
 function initScrollReveal() {
-  const revealElements = document.querySelectorAll('.reveal-on-scroll');
+  const revealElements = document.querySelectorAll(".reveal-on-scroll");
   
-  if (!('IntersectionObserver' in window)) {
-    // Fallback if IntersectionObserver not supported
-    revealElements.forEach(el => el.classList.add('revealed'));
+  if (!("IntersectionObserver" in window)) {
+    revealElements.forEach(el => el.classList.add("revealed"));
     return;
   }
 
   const observerOptions = {
     root: null,
-    rootMargin: '0px 0px -40px 0px',
-    threshold: 0.12
+    rootMargin: "0px 0px -40px 0px",
+    threshold: 0.1
   };
 
   const revealObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        entry.target.classList.add('revealed');
+        entry.target.classList.add("revealed");
         observer.unobserve(entry.target);
       }
     });
@@ -174,11 +867,11 @@ function initScrollReveal() {
 }
 
 // =============================================================================
-// 7. SCROLL SPY (ACTIVE NAV LINK HIGHLIGHT)
+// 13. SCROLL SPY (ACTIVE NAV LINK HIGHLIGHT)
 // =============================================================================
 function initScrollSpy() {
-  const sections = document.querySelectorAll('section[id]');
-  const navLinks = document.querySelectorAll('.nav-menu .nav-link');
+  const sections = document.querySelectorAll("section[id]");
+  const navLinks = document.querySelectorAll(".nav-menu .nav-link");
 
   if (!sections.length || !navLinks.length) return;
 
@@ -188,18 +881,18 @@ function initScrollSpy() {
     sections.forEach(section => {
       const top = section.offsetTop;
       const height = section.offsetHeight;
-      const id = section.getAttribute('id');
+      const id = section.getAttribute("id");
 
       if (scrollPos >= top && scrollPos < top + height) {
         navLinks.forEach(link => {
-          link.classList.remove('active');
-          if (link.getAttribute('href') === `#${id}`) {
-            link.classList.add('active');
+          link.classList.remove("active");
+          if (link.getAttribute("href") === `#${id}`) {
+            link.classList.add("active");
           }
         });
       }
     });
   };
 
-  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener("scroll", onScroll, { passive: true });
 }
