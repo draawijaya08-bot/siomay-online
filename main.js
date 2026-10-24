@@ -103,7 +103,7 @@ export let activeProducts = [...PRODUCTS];
 
 // Helper: Get product by ID (searches active dynamic products then fallback)
 export function getProductById(id) {
-  return activeProducts.find(p => p.id === id) || PRODUCTS.find(p => p.id === id) || null;
+  return activeProducts.find(p => p.id === id || p.dbId === id) || PRODUCTS.find(p => p.id === id) || null;
 }
 
 // =============================================================================
@@ -324,6 +324,9 @@ if (typeof document !== "undefined") {
       window.addEventListener("siomay_menu_updated", () => {
         syncPublicWebsiteFromBackend();
       });
+      window.addEventListener("siomay_settings_updated", () => {
+        syncPublicWebsiteFromBackend();
+      });
     }
   });
 }
@@ -460,17 +463,20 @@ function renderMenuCards() {
       badgeHtml = `<span class="menu-badge ${badgeClass}">${product.badge}</span>`;
     }
 
+    const imgUrl = product.image || product.image_url || "/images/menu-original.jpg";
+
     return `
-      <article class="menu-card ${isHighlight} reveal-on-scroll ${delayClass} ${!isAvailable ? 'item-out-of-stock' : ''}" data-product-card-id="${product.id}">
+      <article class="menu-card ${isHighlight} revealed ${delayClass} ${!isAvailable ? 'item-out-of-stock' : ''}" data-product-card-id="${product.id}">
         <div class="menu-card-image-wrap">
           ${badgeHtml}
           <img 
-            src="${product.image}" 
+            src="${imgUrl}" 
             alt="${product.name} — ${product.desc}" 
             class="menu-card-image"
             loading="lazy"
             width="400" 
             height="300"
+            onerror="this.onerror=null;this.src='/images/menu-original.jpg';"
           >
         </div>
         <div class="menu-card-body">
@@ -520,6 +526,9 @@ function renderMenuCards() {
       addToCart(productId, 1);
     });
   });
+
+  // Re-observe scroll reveal
+  initScrollReveal();
 }
 
 function triggerCartButtonFeedback(productId) {

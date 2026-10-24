@@ -294,8 +294,12 @@ export async function fetchAllMenuItems() {
         .order("created_at", { ascending: true });
 
       if (!error && Array.isArray(data) && data.length > 0) {
-        saveLocalMenuItems(data);
-        return { success: true, items: data, isLive: true };
+        // Merge Supabase items with any locally added items
+        const localItems = getLocalMenuItems();
+        const localOnly = localItems.filter(l => !data.some(d => d.id === l.id || d.slug === l.slug));
+        const combined = [...localOnly, ...data];
+        saveLocalMenuItems(combined);
+        return { success: true, items: combined, isLive: true };
       }
     } catch (err) {
       console.warn("[CMS Menu] Gagal mengambil menu dari Supabase, beralih ke buffer lokal:", err);
@@ -328,6 +332,8 @@ export async function createMenuItem(itemData) {
     slug: safeName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now().toString(36)
   };
 
+  let createdItem = null;
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
@@ -337,30 +343,30 @@ export async function createMenuItem(itemData) {
         .single();
 
       if (!error && data) {
-        const currentLocal = getLocalMenuItems();
-        currentLocal.unshift(data);
-        saveLocalMenuItems(currentLocal);
-        return { success: true, item: data, isLive: true };
+        createdItem = data;
+      } else {
+        console.warn("[CMS Menu] Supabase insert menu ditolak RLS, beralih ke buffer lokal:", error);
       }
-      console.warn("[CMS Menu] Supabase insert menu gagal, menyimpan ke buffer lokal:", error);
     } catch (err) {
       console.warn("[CMS Menu] Error Supabase menu, beralih ke buffer lokal:", err);
     }
   }
 
-  // Local persistence buffer fallback
-  const localItem = {
-    id: "menu-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 7),
-    ...payload,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
+  if (!createdItem) {
+    // Local persistence buffer fallback
+    createdItem = {
+      id: "menu-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 7),
+      ...payload,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  }
 
-  const currentLocal = getLocalMenuItems();
-  currentLocal.unshift(localItem);
+  const currentLocal = getLocalMenuItems().filter(i => i.id !== createdItem.id && i.slug !== createdItem.slug);
+  currentLocal.unshift(createdItem);
   saveLocalMenuItems(currentLocal);
 
-  return { success: true, item: localItem, isLocal: true };
+  return { success: true, item: createdItem, isLocal: !Boolean(createdItem.created_at && !createdItem.id.startsWith("menu-")) };
 }
 
 /**
@@ -393,7 +399,7 @@ export async function updateMenuItem(id, itemData) {
         .single();
 
       if (!error && data) {
-        const currentLocal = getLocalMenuItems().map(item => item.id === id ? { ...item, ...data } : item);
+        const currentLocal = getLocalMenuItems().map(item => item.id === id || item.slug === id ? { ...item, ...data } : item);
         saveLocalMenuItems(currentLocal);
         return { success: true, item: data, isLive: true };
       }
@@ -414,7 +420,6 @@ export async function updateMenuItem(id, itemData) {
   });
 
   if (!updatedItem) {
-    // If id was not matched, try prepending or updating first matching slug
     return { success: false, error: "Menu tidak ditemukan." };
   }
 
@@ -502,6 +507,12 @@ export function saveLocalSiteSettings(settings) {
   } else {
     inMemorySettings = safe;
   }
+
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent("siomay_settings_updated", { detail: { settings: safe } }));
+    } catch {}
+  }
 }
 
 /**
@@ -575,9 +586,9 @@ export async function updateSiteSettings(settingsData) {
 // =============================================================================
 
 /**
- * Convert a File or Blob into a Base64 Data URL (safe offline fallback)
+ * Convert a File or Blob into an optimized Base64 Data URL (safe offline fallback with canvas compression)
  */
-function fileToDataUrl(file) {
+function fileToDataUrl(file, maxWidth = 800, maxHeight = 800, quality = 0.82) {
   return new Promise((resolve, reject) => {
     if (typeof FileReader === "undefined") {
       // In Node.js environment (for tests)
@@ -591,6 +602,46 @@ function fileToDataUrl(file) {
       }
       return;
     }
+
+    // In Browser: Compress images with HTML5 Canvas to prevent LocalStorage Quota Exceeded
+    if (file && file.type && file.type.startsWith("image/") && typeof document !== "undefined") {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressedUrl = canvas.toDataURL("image/jpeg", quality);
+            resolve(compressedUrl);
+          } catch {
+            resolve(e.target.result);
+          }
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = (err) => reject(err);

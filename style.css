@@ -862,6 +862,8 @@ ul, ol {
   transition: var(--transition-smooth);
   box-shadow: var(--shadow-subtle);
   position: relative;
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .menu-card:hover {
