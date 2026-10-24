@@ -28,7 +28,7 @@
 
       <div id="authErrorAlert" class="cms-alert cms-alert-error" style="display: none;" role="alert"></div>
 
-      <form id="ownerLoginForm" class="cms-auth-form" onsubmit="return false;" novalidate>
+      <form id="ownerLoginForm" class="cms-auth-form" novalidate>
         <div class="form-group">
           <label for="ownerEmail" class="form-label">Email Pemilik <span class="required-star">*</span></label>
           <input 
@@ -126,6 +126,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
           </span>
           <span>WhatsApp & Pesanan</span>
+          <span class="cms-nav-badge" id="sidebarPendingOrdersBadge" style="display: none;">0</span>
         </button>
         <button type="button" class="cms-nav-item" data-target-view="viewReviews">
           <span class="nav-icon" aria-hidden="true">
@@ -229,17 +230,17 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               </span>
               <div class="metric-info">
-                <span class="metric-label">Ulasan Menunggu Tinjauan</span>
+                <span class="metric-label">Ulasan Menunggu</span>
                 <strong class="metric-val text-orange" id="metricPendingReviews">0</strong>
               </div>
             </div>
             <div class="cms-metric-card">
               <span class="metric-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               </span>
               <div class="metric-info">
-                <span class="metric-label">Ulasan Disetujui</span>
-                <strong class="metric-val text-green" id="metricApprovedReviews">0</strong>
+                <span class="metric-label">Pesanan Masuk</span>
+                <strong class="metric-val text-green" id="metricTotalOrders">0</strong>
               </div>
             </div>
           </div>
@@ -305,7 +306,7 @@
             </div>
           </div>
 
-          <form id="heroContentForm" class="cms-card-form" onsubmit="return false;" novalidate>
+          <form id="heroContentForm" class="cms-card-form" novalidate>
             <h3 class="section-heading">1. Hero Banner Utama</h3>
 
             <div class="form-grid-2">
@@ -392,7 +393,7 @@
             </div>
           </div>
 
-          <form id="whatsAppSettingsForm" class="cms-card-form" onsubmit="return false;" novalidate>
+          <form id="whatsAppSettingsForm" class="cms-card-form" novalidate>
             <div class="form-group">
               <label for="settingWhatsAppNumber" class="form-label">Nomor WhatsApp Toko <span class="required-star">*</span></label>
               <input 
@@ -433,6 +434,44 @@
               </button>
             </div>
           </form>
+
+          <!-- ==========================================================
+               INBOX PESANAN PELANGGAN (ORDER INBOX)
+               ========================================================== -->
+          <div class="cms-orders-section">
+            <div class="view-header" style="margin-top: 40px; margin-bottom: 20px;">
+              <div>
+                <h2 class="view-title" style="font-size: 1.35rem;">Daftar Pesanan Masuk (Order Inbox)</h2>
+                <p class="view-desc">Pesanan yang dikirim oleh pelanggan dari keranjang belanja website publik.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshOrders">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>Segarkan Pesanan</span>
+              </button>
+            </div>
+
+            <!-- Filter Tabs Pesanan -->
+            <div class="admin-tabs-bar">
+              <div class="admin-tabs" role="tablist">
+                <button type="button" class="admin-tab active" data-order-filter="all">Semua Pesanan</button>
+                <button type="button" class="admin-tab" data-order-filter="baru">Pesanan Baru</button>
+                <button type="button" class="admin-tab" data-order-filter="diproses">Sedang Diproses</button>
+                <button type="button" class="admin-tab" data-order-filter="diantar">Sedang Diantar</button>
+                <button type="button" class="admin-tab" data-order-filter="selesai">Selesai</button>
+              </div>
+            </div>
+
+            <div id="ordersListLoading" class="cms-loading-state" style="display: none;">
+              <span class="admin-spinner"></span>
+              <p>Memuat daftar pesanan...</p>
+            </div>
+
+            <div id="ordersListEmpty" class="cms-empty-state" style="display: none;">
+              <p>Belum ada pesanan pada kategori ini.</p>
+            </div>
+
+            <div class="admin-orders-list" id="cmsOrdersList"></div>
+          </div>
         </div>
       </section>
 
@@ -502,7 +541,7 @@
     <div class="review-modal-body">
       <div id="menuModalAlert" class="cms-alert cms-alert-error" style="display: none;" role="alert"></div>
 
-      <form id="menuItemForm" onsubmit="return false;" novalidate>
+      <form id="menuItemForm" novalidate>
         <input type="hidden" id="editMenuItemId" value="">
 
         <div class="form-group">

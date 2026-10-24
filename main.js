@@ -876,6 +876,38 @@ function handleOrderSubmit(e) {
   const customer = { name, phone, address, note };
   const waUrl = buildWhatsAppOrderUrl(summary, customer);
 
+  // Record order in customer orders history for Admin CMS
+  try {
+    const newOrder = {
+      id: "ORD-" + Date.now().toString().slice(-6),
+      created_at: new Date().toISOString(),
+      customer: {
+        name,
+        phone,
+        address,
+        note
+      },
+      items: summary.items.map(it => ({
+        id: it.id,
+        name: it.product ? it.product.name : it.id,
+        price: it.product ? it.product.price : 0,
+        quantity: it.quantity,
+        subtotal: it.subtotal,
+        portion: it.product?.portion || "Porsi Mantap"
+      })),
+      total: summary.total,
+      itemCount: summary.itemCount,
+      status: "baru"
+    };
+
+    const existingOrders = JSON.parse(localStorage.getItem("siomay_customer_orders") || "[]");
+    existingOrders.unshift(newOrder);
+    localStorage.setItem("siomay_customer_orders", JSON.stringify(existingOrders));
+    window.dispatchEvent(new CustomEvent("siomay_order_created", { detail: { order: newOrder } }));
+  } catch (err) {
+    console.warn("Gagal menyimpan pesanan ke riwayat CMS:", err);
+  }
+
   // Transition to Success State in Cart
   showOrderSuccessState(waUrl);
 

@@ -31,6 +31,8 @@ let menuItems = [];
 let siteSettings = null;
 let allReviews = [];
 let currentReviewFilter = "all";
+let allOrders = [];
+let currentOrderFilter = "all";
 
 // =============================================================================
 // INITIALIZATION
@@ -42,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initContentHandlers();
   initWhatsAppHandlers();
   initReviewHandlers();
+  initOrdersHandlers();
 
   // Check existing session
   await checkAuthSession();
@@ -282,7 +285,8 @@ async function loadAllCmsData() {
   await Promise.all([
     loadMenuItems(),
     loadSiteSettings(),
-    loadReviewsForAdmin()
+    loadReviewsForAdmin(),
+    loadCustomerOrders()
   ]);
   updateOverviewMetrics();
 }
@@ -292,7 +296,9 @@ function updateOverviewMetrics() {
   const metricWa = document.getElementById("metricWhatsApp");
   const metricPending = document.getElementById("metricPendingReviews");
   const metricApproved = document.getElementById("metricApprovedReviews");
+  const metricOrders = document.getElementById("metricTotalOrders");
   const sidebarBadge = document.getElementById("sidebarPendingReviewsBadge");
+  const sidebarOrdersBadge = document.getElementById("sidebarPendingOrdersBadge");
 
   if (metricMenu) metricMenu.textContent = menuItems.length;
   if (metricWa && siteSettings) {
@@ -301,9 +307,12 @@ function updateOverviewMetrics() {
 
   const pendingCount = allReviews.filter(r => r.status === "pending").length;
   const approvedCount = allReviews.filter(r => r.status === "approved").length;
+  const totalOrdersCount = allOrders.length;
+  const newOrdersCount = allOrders.filter(o => o.status === "baru").length;
 
   if (metricPending) metricPending.textContent = pendingCount;
   if (metricApproved) metricApproved.textContent = approvedCount;
+  if (metricOrders) metricOrders.textContent = totalOrdersCount;
 
   if (sidebarBadge) {
     if (pendingCount > 0) {
@@ -311,6 +320,15 @@ function updateOverviewMetrics() {
       sidebarBadge.style.display = "inline-flex";
     } else {
       sidebarBadge.style.display = "none";
+    }
+  }
+
+  if (sidebarOrdersBadge) {
+    if (newOrdersCount > 0) {
+      sidebarOrdersBadge.textContent = newOrdersCount;
+      sidebarOrdersBadge.style.display = "inline-flex";
+    } else {
+      sidebarOrdersBadge.style.display = "none";
     }
   }
 }
@@ -384,6 +402,14 @@ function initMenuHandlers() {
   // Form Save
   if (form) {
     form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await handleSaveMenuItem();
+    });
+  }
+
+  const btnSave = document.getElementById("btnSaveMenuItem");
+  if (btnSave) {
+    btnSave.addEventListener("click", async (e) => {
       e.preventDefault();
       await handleSaveMenuItem();
     });
@@ -768,6 +794,14 @@ function initContentHandlers() {
       await handleSaveHeroContent();
     });
   }
+
+  const btnSaveHero = document.getElementById("btnSaveHeroContent");
+  if (btnSaveHero) {
+    btnSaveHero.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await handleSaveHeroContent();
+    });
+  }
 }
 
 function updateVideoPreview(url) {
@@ -881,6 +915,14 @@ function initWhatsAppHandlers() {
 
   if (form) {
     form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await handleSaveWhatsApp();
+    });
+  }
+
+  const btnSaveWa = document.getElementById("btnSaveWhatsApp");
+  if (btnSaveWa) {
+    btnSaveWa.addEventListener("click", async (e) => {
       e.preventDefault();
       await handleSaveWhatsApp();
     });
@@ -1163,3 +1205,265 @@ function escapeSafe(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// =============================================================================
+// 9. CUSTOMER ORDERS MANAGEMENT (ORDER INBOX)
+// =============================================================================
+const DEFAULT_SAMPLE_ORDERS = [
+  {
+    id: "ORD-948201",
+    created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    customer: {
+      name: "Budi Santoso",
+      phone: "6281288991122",
+      address: "Jl. Dago Asri No. 12, Bandung (Dekat Alfamart)",
+      note: "Bumbu kacangnya dipisah ya, banyakin sambalnya."
+    },
+    items: [
+      { id: "siomay-komplit", name: "Siomay Komplit", price: 25000, quantity: 2, subtotal: 50000, portion: "Paling Lengkap" },
+      { id: "batagor", name: "Batagor", price: 15000, quantity: 1, subtotal: 15000, portion: "Crispy & Gurih" }
+    ],
+    total: 65000,
+    itemCount: 3,
+    status: "baru"
+  },
+  {
+    id: "ORD-948180",
+    created_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(),
+    customer: {
+      name: "Siti Rahma",
+      phone: "6285712345678",
+      address: "Komplek Graha Indah Blok C3 No. 5",
+      note: "Kecap manis sedikit saja."
+    },
+    items: [
+      { id: "paket-hemat", name: "Paket Hemat", price: 35000, quantity: 1, subtotal: 35000, portion: "Porsi Kenyang" }
+    ],
+    total: 35000,
+    itemCount: 1,
+    status: "diproses"
+  },
+  {
+    id: "ORD-947990",
+    created_at: new Date(Date.now() - 240 * 60 * 1000).toISOString(),
+    customer: {
+      name: "Agus Pratama",
+      phone: "6281399887766",
+      address: "Kantor BCA Dago Lt. 2",
+      note: "Titip di satpam kalau belum turun."
+    },
+    items: [
+      { id: "siomay-original", name: "Siomay Original", price: 15000, quantity: 4, subtotal: 60000, portion: "Porsi Mantap" }
+    ],
+    total: 60000,
+    itemCount: 4,
+    status: "selesai"
+  }
+];
+
+function initOrdersHandlers() {
+  const btnRefresh = document.getElementById("btnRefreshOrders");
+  const filterTabs = document.querySelectorAll("[data-order-filter]");
+
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      loadCustomerOrders();
+      showToast("Daftar pesanan berhasil disegarkan.", "info");
+    });
+  }
+
+  filterTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      filterTabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentOrderFilter = tab.getAttribute("data-order-filter") || "all";
+      renderCustomerOrders();
+    });
+  });
+
+  // Realtime & cross-tab sync when an order is placed from website
+  window.addEventListener("siomay_order_created", () => {
+    loadCustomerOrders();
+    updateOverviewMetrics();
+    showToast("Ada pesanan baru masuk dari website publik!", "success");
+  });
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === "siomay_customer_orders") {
+      loadCustomerOrders();
+      updateOverviewMetrics();
+    }
+  });
+}
+
+function loadCustomerOrders() {
+  const loading = document.getElementById("ordersListLoading");
+  if (loading) loading.style.display = "flex";
+
+  try {
+    const raw = localStorage.getItem("siomay_customer_orders");
+    if (!raw) {
+      allOrders = [...DEFAULT_SAMPLE_ORDERS];
+      localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
+    } else {
+      allOrders = JSON.parse(raw);
+    }
+  } catch (err) {
+    console.warn("Gagal membaca riwayat pesanan:", err);
+    allOrders = [...DEFAULT_SAMPLE_ORDERS];
+  }
+
+  if (loading) loading.style.display = "none";
+  renderCustomerOrders();
+  updateOverviewMetrics();
+}
+
+function renderCustomerOrders() {
+  const list = document.getElementById("cmsOrdersList");
+  const empty = document.getElementById("ordersListEmpty");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  const filtered = allOrders.filter(order => {
+    if (currentOrderFilter === "all") return true;
+    return order.status === currentOrderFilter;
+  });
+
+  if (filtered.length === 0) {
+    if (empty) empty.style.display = "block";
+    return;
+  }
+
+  if (empty) empty.style.display = "none";
+
+  const statusLabels = {
+    baru: "Pesanan Baru",
+    diproses: "Sedang Diproses",
+    diantar: "Sedang Diantar",
+    selesai: "Selesai"
+  };
+
+  filtered.forEach(order => {
+    const card = document.createElement("div");
+    card.className = `admin-order-card status-${order.status}`;
+
+    const dateStr = formatReviewDate(order.created_at);
+    const totalFormatted = "Rp" + Math.round(order.total || 0).toLocaleString("id-ID");
+    
+    // Clean phone for direct WhatsApp action
+    let cleanPhone = (order.customer?.phone || "").replace(/[^0-9]/g, "");
+    if (cleanPhone.startsWith("0")) cleanPhone = "62" + cleanPhone.substring(1);
+    const chatMsg = encodeURIComponent(`Halo Kak ${order.customer?.name || ""}, kami dari Siomay Online ingin konfirmasi pesanan Anda (${order.id}).`);
+    const waChatUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${chatMsg}` : "#";
+
+    const itemsHtml = (order.items || []).map(item => `
+      <div class="order-item-row">
+        <span class="order-item-qty">${item.quantity}x</span>
+        <span class="order-item-name">${escapeSafe(item.name)} <small>(${item.portion || ""})</small></span>
+        <strong class="order-item-subtotal">Rp${Math.round(item.subtotal || (item.price * item.quantity)).toLocaleString("id-ID")}</strong>
+      </div>
+    `).join("");
+
+    card.innerHTML = `
+      <div class="admin-order-header">
+        <div class="order-id-meta">
+          <strong class="order-id-code">${order.id}</strong>
+          <span class="order-time-text">• ${dateStr}</span>
+        </div>
+        <span class="order-status-badge badge-${order.status}">${statusLabels[order.status] || order.status}</span>
+      </div>
+
+      <div class="order-customer-box">
+        <div class="customer-row">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <strong>${escapeSafe(order.customer?.name || "Pelanggan")}</strong>
+          <span class="customer-phone">${escapeSafe(order.customer?.phone || "")}</span>
+        </div>
+        <div class="customer-row text-subtle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>${escapeSafe(order.customer?.address || "-")}</span>
+        </div>
+        ${order.customer?.note ? `
+          <div class="customer-note-box">
+            <em>Catatan: "${escapeSafe(order.customer.note)}"</em>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="order-items-list-box">
+        ${itemsHtml}
+      </div>
+
+      <div class="order-total-bar">
+        <span>Total Pembayaran (${order.itemCount || 0} item):</span>
+        <strong class="order-total-amount">${totalFormatted}</strong>
+      </div>
+
+      <div class="order-actions-bar">
+        <div class="order-status-selector">
+          <label class="status-select-label">Status Pesanan:</label>
+          <select class="form-input form-select-sm select-order-status" data-order-id="${order.id}">
+            <option value="baru" ${order.status === 'baru' ? 'selected' : ''}>Pesanan Baru</option>
+            <option value="diproses" ${order.status === 'diproses' ? 'selected' : ''}>Sedang Diproses</option>
+            <option value="diantar" ${order.status === 'diantar' ? 'selected' : ''}>Sedang Diantar</option>
+            <option value="selesai" ${order.status === 'selesai' ? 'selected' : ''}>Selesai</option>
+          </select>
+        </div>
+
+        <div class="order-btn-group">
+          ${cleanPhone ? `
+            <a href="${waChatUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary btn-chat-wa" title="Hubungi Pelanggan di WhatsApp">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              <span>Hubungi WA</span>
+            </a>
+          ` : ''}
+          <button type="button" class="btn btn-sm btn-danger btn-delete-order" data-order-id="${order.id}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Hapus</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Bind change status
+    const selectStatus = card.querySelector(".select-order-status");
+    if (selectStatus) {
+      selectStatus.addEventListener("change", (e) => {
+        updateOrderStatus(order.id, e.target.value);
+      });
+    }
+
+    // Bind delete order
+    const deleteBtn = card.querySelector(".btn-delete-order");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", () => {
+        if (confirm(`Hapus pesanan ${order.id} dari daftar?`)) {
+          deleteOrder(order.id);
+        }
+      });
+    }
+
+    list.appendChild(card);
+  });
+}
+
+function updateOrderStatus(orderId, newStatus) {
+  const idx = allOrders.findIndex(o => o.id === orderId);
+  if (idx !== -1) {
+    allOrders[idx].status = newStatus;
+    localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
+    showToast(`Status pesanan ${orderId} diubah ke '${newStatus}'.`, "success");
+    renderCustomerOrders();
+    updateOverviewMetrics();
+  }
+}
+
+function deleteOrder(orderId) {
+  allOrders = allOrders.filter(o => o.id !== orderId);
+  localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
+  showToast(`Pesanan ${orderId} berhasil dihapus.`, "info");
+  renderCustomerOrders();
+  updateOverviewMetrics();
+}
+

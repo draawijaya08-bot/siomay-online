@@ -4216,6 +4216,232 @@ ul, ol {
   margin-top: 16px;
 }
 
+.mt-5 {
+  margin-top: 24px;
+}
+
+/* =============================================================================
+   CMS ORDER INBOX STYLES
+   ============================================================================= */
+.cms-orders-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-order-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: var(--transition-smooth);
+}
+
+.admin-order-card:hover {
+  box-shadow: var(--shadow-card);
+}
+
+.admin-order-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.order-id-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-id-code {
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--accent-orange);
+  background-color: #FFF2EB;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.order-time-text {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.order-status-badge {
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.badge-baru {
+  background-color: #FEF3C7;
+  color: #B45309;
+}
+
+.badge-diproses {
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+}
+
+.badge-diantar {
+  background-color: #F3E8FF;
+  color: #6B21A8;
+}
+
+.badge-selesai {
+  background-color: var(--accent-green-light);
+  color: var(--accent-green);
+}
+
+.order-customer-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: var(--bg-surface-warm);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+}
+
+.customer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-main);
+}
+
+.customer-row.text-subtle {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.customer-phone {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.customer-note-box {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-subtle);
+  color: var(--accent-orange);
+  font-size: 0.82rem;
+}
+
+.order-items-list-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.order-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.88rem;
+}
+
+.order-item-qty {
+  font-weight: 700;
+  color: var(--accent-orange);
+  min-width: 28px;
+}
+
+.order-item-name {
+  flex-grow: 1;
+  color: var(--text-body);
+}
+
+.order-item-name small {
+  color: var(--text-muted);
+}
+
+.order-item-subtotal {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.order-total-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 0 6px;
+  border-top: 1px solid var(--border-light);
+  font-size: 0.95rem;
+}
+
+.order-total-amount {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-orange);
+}
+
+.order-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+
+.order-status-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-select-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.form-select-sm {
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  cursor: pointer;
+}
+
+.order-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-chat-wa {
+  color: #059669;
+  border-color: #A7F3D0;
+  background-color: #ECFDF5;
+}
+
+.btn-chat-wa:hover {
+  background-color: #059669;
+  color: #FFFFFF;
+}
+
 /* Responsive Overrides */
 @media (max-width: 991px) {
   .cms-sidebar {
