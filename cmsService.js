@@ -365,7 +365,7 @@ export async function createMenuItem(itemData) {
   const payload = {
     name: safeName,
     price: cleanPrice,
-    description: (itemData.description || "").trim(),
+    description: (itemData.description || "").trim() || "Menu lezat dan nikmat, dibuat dengan bahan segar berkualitas setiap hari.",
     image_url: (itemData.image_url || "").trim() || "/images/menu-original.jpg",
     badge: (itemData.badge || "").trim() || null,
     portion: (itemData.portion || "Porsi Mantap").trim(),
