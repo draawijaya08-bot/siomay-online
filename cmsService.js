@@ -281,10 +281,31 @@ export function saveLocalMenuItems(items) {
   }
 }
 
+// Helper: Get set of locally deleted menu IDs
+function getLocalDeletedMenuIds() {
+  if (typeof localStorage === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem("siomay_deleted_menu_ids");
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveLocalDeletedMenuIds(idSet) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem("siomay_deleted_menu_ids", JSON.stringify(Array.from(idSet)));
+  } catch {}
+}
+
 /**
  * Fetch all menu items (attempts Supabase first, falls back to local buffer)
  */
 export async function fetchAllMenuItems() {
+  const localItems = getLocalMenuItems();
+  const deletedIds = getLocalDeletedMenuIds();
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
@@ -294,10 +315,30 @@ export async function fetchAllMenuItems() {
         .order("created_at", { ascending: true });
 
       if (!error && Array.isArray(data) && data.length > 0) {
-        // Merge Supabase items with any locally added items
-        const localItems = getLocalMenuItems();
-        const localOnly = localItems.filter(l => !data.some(d => d.id === l.id || d.slug === l.slug));
-        const combined = [...localOnly, ...data];
+        // Filter out any locally deleted items
+        const activeFromDb = data.filter(d => !deletedIds.has(d.id) && !deletedIds.has(d.slug));
+
+        // Map local edits/overrides
+        const localOverrides = new Map();
+        localItems.forEach(l => {
+          if (l._isLocalModified) {
+            localOverrides.set(l.id, l);
+            if (l.slug) localOverrides.set(l.slug, l);
+          }
+        });
+
+        // Merge DB rows with any active local overrides
+        const mergedDbItems = activeFromDb.map(item => {
+          return localOverrides.get(item.id) || localOverrides.get(item.slug) || item;
+        });
+
+        // Include any newly created local-only items (id begins with 'menu-')
+        const localCreatedOnly = localItems.filter(l => {
+          const isLocalId = l.id && String(l.id).startsWith("menu-");
+          return isLocalId && !activeFromDb.some(d => d.id === l.id || d.slug === l.slug) && !deletedIds.has(l.id);
+        });
+
+        const combined = [...localCreatedOnly, ...mergedDbItems];
         saveLocalMenuItems(combined);
         return { success: true, items: combined, isLive: true };
       }
@@ -306,7 +347,8 @@ export async function fetchAllMenuItems() {
     }
   }
 
-  return { success: true, items: getLocalMenuItems(), isLocal: true };
+  const activeLocal = localItems.filter(l => !deletedIds.has(l.id));
+  return { success: true, items: activeLocal, isLocal: true };
 }
 
 /**
@@ -318,11 +360,13 @@ export async function createMenuItem(itemData) {
     return { success: false, error: "Nama menu tidak boleh kosong." };
   }
 
+  const cleanPrice = Math.max(0, parseInt(String(itemData.price || "0").replace(/[^0-9]/g, ""), 10) || 0);
+
   const payload = {
     name: safeName,
-    price: Math.max(0, parseInt(itemData.price, 10) || 0),
+    price: cleanPrice,
     description: (itemData.description || "").trim(),
-    image_url: itemData.image_url || "/images/menu-original.jpg",
+    image_url: (itemData.image_url || "").trim() || "/images/menu-original.jpg",
     badge: (itemData.badge || "").trim() || null,
     portion: (itemData.portion || "Porsi Mantap").trim(),
     rating: parseFloat(itemData.rating) || 4.9,
@@ -333,6 +377,7 @@ export async function createMenuItem(itemData) {
   };
 
   let createdItem = null;
+  let isSupabaseSuccess = false;
 
   if (isSupabaseConfigured && supabase) {
     try {
@@ -344,6 +389,7 @@ export async function createMenuItem(itemData) {
 
       if (!error && data) {
         createdItem = data;
+        isSupabaseSuccess = true;
       } else {
         console.warn("[CMS Menu] Supabase insert menu ditolak RLS, beralih ke buffer lokal:", error);
       }
@@ -353,20 +399,33 @@ export async function createMenuItem(itemData) {
   }
 
   if (!createdItem) {
-    // Local persistence buffer fallback
+    // Local persistence buffer fallback with generated ID
     createdItem = {
       id: "menu-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 7),
       ...payload,
+      _isLocalModified: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+  }
+
+  // Remove from deleted list if re-added
+  const deletedSet = getLocalDeletedMenuIds();
+  if (deletedSet.has(createdItem.id)) {
+    deletedSet.delete(createdItem.id);
+    saveLocalDeletedMenuIds(deletedSet);
   }
 
   const currentLocal = getLocalMenuItems().filter(i => i.id !== createdItem.id && i.slug !== createdItem.slug);
   currentLocal.unshift(createdItem);
   saveLocalMenuItems(currentLocal);
 
-  return { success: true, item: createdItem, isLocal: !Boolean(createdItem.created_at && !createdItem.id.startsWith("menu-")) };
+  return { 
+    success: true, 
+    item: createdItem, 
+    isLive: isSupabaseSuccess, 
+    isLocal: !isSupabaseSuccess 
+  };
 }
 
 /**
@@ -375,11 +434,13 @@ export async function createMenuItem(itemData) {
 export async function updateMenuItem(id, itemData) {
   if (!id) return { success: false, error: "ID menu tidak ditemukan." };
 
+  const cleanPrice = Math.max(0, parseInt(String(itemData.price || "0").replace(/[^0-9]/g, ""), 10) || 0);
+
   const payload = {
     name: (itemData.name || "").trim(),
-    price: Math.max(0, parseInt(itemData.price, 10) || 0),
+    price: cleanPrice,
     description: (itemData.description || "").trim(),
-    image_url: itemData.image_url || "/images/menu-original.jpg",
+    image_url: (itemData.image_url || "").trim() || "/images/menu-original.jpg",
     badge: (itemData.badge || "").trim() || null,
     portion: (itemData.portion || "Porsi Mantap").trim(),
     rating: parseFloat(itemData.rating) || 4.9,
@@ -389,7 +450,12 @@ export async function updateMenuItem(id, itemData) {
     updated_at: new Date().toISOString()
   };
 
-  if (isSupabaseConfigured && supabase) {
+  let updatedFromSb = null;
+  let isSupabaseSuccess = false;
+
+  const isLocalId = String(id).startsWith("menu-");
+
+  if (isSupabaseConfigured && supabase && !isLocalId) {
     try {
       const { data, error } = await supabase
         .from("menu_items")
@@ -399,9 +465,8 @@ export async function updateMenuItem(id, itemData) {
         .single();
 
       if (!error && data) {
-        const currentLocal = getLocalMenuItems().map(item => item.id === id || item.slug === id ? { ...item, ...data } : item);
-        saveLocalMenuItems(currentLocal);
-        return { success: true, item: data, isLive: true };
+        updatedFromSb = data;
+        isSupabaseSuccess = true;
       }
     } catch (err) {
       console.warn("[CMS Menu] Supabase update gagal, beralih ke buffer lokal:", err);
@@ -410,21 +475,33 @@ export async function updateMenuItem(id, itemData) {
 
   // Update in local buffer
   const currentLocal = getLocalMenuItems();
-  let updatedItem = null;
+  let updatedItem = updatedFromSb;
   const updatedList = currentLocal.map(item => {
     if (item.id === id || item.slug === id) {
-      updatedItem = { ...item, ...payload };
+      updatedItem = { 
+        ...item, 
+        ...payload, 
+        ...(updatedFromSb || {}),
+        _isLocalModified: !isSupabaseSuccess 
+      };
       return updatedItem;
     }
     return item;
   });
 
   if (!updatedItem) {
-    return { success: false, error: "Menu tidak ditemukan." };
+    // If not in local items list, add it
+    updatedItem = { id, ...payload, _isLocalModified: !isSupabaseSuccess };
+    updatedList.unshift(updatedItem);
   }
 
   saveLocalMenuItems(updatedList);
-  return { success: true, item: updatedItem, isLocal: true };
+  return { 
+    success: true, 
+    item: updatedItem, 
+    isLive: isSupabaseSuccess, 
+    isLocal: !isSupabaseSuccess 
+  };
 }
 
 /**
@@ -433,24 +510,24 @@ export async function updateMenuItem(id, itemData) {
 export async function deleteMenuItem(id) {
   if (!id) return { success: false, error: "ID menu tidak ditemukan." };
 
-  if (isSupabaseConfigured && supabase) {
+  const isLocalId = String(id).startsWith("menu-");
+
+  if (isSupabaseConfigured && supabase && !isLocalId) {
     try {
-      const { error } = await supabase
+      await supabase
         .from("menu_items")
         .delete()
         .eq("id", id);
-
-      if (!error) {
-        const filtered = getLocalMenuItems().filter(item => item.id !== id && item.slug !== id);
-        saveLocalMenuItems(filtered);
-        return { success: true };
-      }
     } catch (err) {
       console.warn("[CMS Menu] Supabase delete gagal, menghapus dari buffer lokal:", err);
     }
   }
 
-  // Delete from local buffer
+  // Add to deleted set so fetchAllMenuItems does not resurrect it
+  const deletedSet = getLocalDeletedMenuIds();
+  deletedSet.add(id);
+  saveLocalDeletedMenuIds(deletedSet);
+
   const filtered = getLocalMenuItems().filter(item => item.id !== id && item.slug !== id);
   saveLocalMenuItems(filtered);
   return { success: true };
@@ -726,3 +803,29 @@ export async function uploadMediaFile(file, folder = "menu") {
     };
   }
 }
+
+/**
+ * Check if current user has direct write access to Supabase menu_items
+ */
+export async function testSupabaseMenuWriteAccess() {
+  if (!isSupabaseConfigured || !supabase) return false;
+  try {
+    const probe = {
+      name: "__probe_check__",
+      price: 0,
+      description: "probe",
+      image_url: "/images/menu-original.jpg",
+      is_available: false,
+      slug: "__probe__" + Date.now().toString(36)
+    };
+    const { data, error } = await supabase.from("menu_items").insert([probe]).select().single();
+    if (!error && data) {
+      await supabase.from("menu_items").delete().eq("id", data.id);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+

@@ -21,13 +21,15 @@ import {
   deleteMenuItem, 
   fetchSiteSettings, 
   updateSiteSettings, 
-  uploadMediaFile 
+  uploadMediaFile,
+  testSupabaseMenuWriteAccess
 } from "./cmsService.js";
 import { formatReviewDate, renderStarsHtml, getLocalReviews, saveLocalReviews } from "./reviews.js";
 
 // Global CMS State
 let currentOwner = null;
 let menuItems = [];
+let isSavingMenuItem = false;
 let siteSettings = null;
 let allReviews = [];
 let currentReviewFilter = "all";
@@ -355,6 +357,86 @@ function initMenuHandlers() {
   if (btnCancelModal) btnCancelModal.addEventListener("click", () => closeMenuModal());
   if (overlay) overlay.addEventListener("click", () => closeMenuModal());
 
+  // Copy Supabase SQL Helper Button
+  const btnCopySql = document.getElementById("btnCopySupabaseSql");
+  if (btnCopySql) {
+    btnCopySql.addEventListener("click", () => {
+      const sqlText = `-- SIOMAY ONLINE — ENABLE FULL CMS ACCESS
+-- Jalankan skrip ini di Supabase SQL Editor:
+DROP POLICY IF EXISTS "Owner can manage menu items" ON public.menu_items;
+DROP POLICY IF EXISTS "Public can manage menu items" ON public.menu_items;
+CREATE POLICY "Public can manage menu items"
+  ON public.menu_items FOR ALL
+  TO public
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Owner can upload media" ON storage.objects;
+DROP POLICY IF EXISTS "Owner can update media" ON storage.objects;
+DROP POLICY IF EXISTS "Owner can delete media" ON storage.objects;
+DROP POLICY IF EXISTS "Allow all access to media" ON storage.objects;
+CREATE POLICY "Allow all access to media"
+  ON storage.objects FOR ALL
+  TO public
+  USING (bucket_id = 'media')
+  WITH CHECK (bucket_id = 'media');
+
+DROP POLICY IF EXISTS "Owner can update site settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Public can update site settings" ON public.site_settings;
+CREATE POLICY "Public can update site settings"
+  ON public.site_settings FOR ALL
+  TO public
+  USING (true)
+  WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS public.customer_orders (
+  id TEXT PRIMARY KEY,
+  customer JSONB NOT NULL,
+  items JSONB NOT NULL,
+  total INTEGER NOT NULL,
+  item_count INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'baru',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.customer_orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can manage orders" ON public.customer_orders;
+CREATE POLICY "Public can manage orders"
+  ON public.customer_orders FOR ALL
+  TO public
+  USING (true)
+  WITH CHECK (true);`;
+
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(sqlText).then(() => {
+          showToast("Skrip SQL berhasil disalin! Silakan jalankan di Supabase SQL Editor.", "success");
+        }).catch(() => {
+          prompt("Salin skrip SQL Supabase berikut:", sqlText);
+        });
+      } else {
+        prompt("Salin skrip SQL Supabase berikut:", sqlText);
+      }
+    });
+  }
+
+  // Detect Supabase DB write status dynamically
+  testSupabaseMenuWriteAccess().then(hasWriteAccess => {
+    const badge = document.getElementById("cmsDbBadge");
+    const dbStatus = document.getElementById("cmsDbStatusIndicator");
+    if (hasWriteAccess) {
+      if (badge) {
+        badge.textContent = "Supabase Cloud Database Terhubung";
+        badge.style.backgroundColor = "#D1FAE5";
+        badge.style.color = "#065F46";
+      }
+      if (dbStatus) {
+        dbStatus.innerHTML = `<span class="status-dot"></span> Supabase Cloud Aktif`;
+        dbStatus.className = "cms-db-status status-connected";
+      }
+    }
+  });
+
   // Upload trigger
   if (btnUpload && fileInput) {
     btnUpload.addEventListener("click", () => fileInput.click());
@@ -399,17 +481,9 @@ function initMenuHandlers() {
     });
   }
 
-  // Form Save
+  // Form Save (single event listener on form submit with preventDefault)
   if (form) {
     form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      await handleSaveMenuItem();
-    });
-  }
-
-  const btnSave = document.getElementById("btnSaveMenuItem");
-  if (btnSave) {
-    btnSave.addEventListener("click", async (e) => {
       e.preventDefault();
       await handleSaveMenuItem();
     });
@@ -598,6 +672,8 @@ function closeMenuModal() {
 }
 
 async function handleSaveMenuItem() {
+  if (isSavingMenuItem) return;
+
   const idInput = document.getElementById("editMenuItemId");
   const nameInput = document.getElementById("menuItemName");
   const priceInput = document.getElementById("menuItemPrice");
@@ -612,16 +688,17 @@ async function handleSaveMenuItem() {
 
   const id = idInput ? idInput.value : "";
   const name = nameInput ? nameInput.value.trim() : "";
-  const price = priceInput ? parseInt(priceInput.value, 10) : 0;
+  const rawPriceText = String(priceInput ? priceInput.value : "").replace(/[^0-9]/g, "");
+  const price = parseInt(rawPriceText, 10);
   const description = descInput ? descInput.value.trim() : "";
-  const image_url = urlInput ? urlInput.value.trim() : "/images/menu-original.jpg";
+  const image_url = urlInput ? (urlInput.value.trim() || "/images/menu-original.jpg") : "/images/menu-original.jpg";
 
   if (!name) {
     showMenuModalAlert("Nama menu tidak boleh kosong.");
     return;
   }
-  if (isNaN(price) || price < 0) {
-    showMenuModalAlert("Harga menu harus angka positif.");
+  if (isNaN(price) || price < 0 || rawPriceText === "") {
+    showMenuModalAlert("Harga menu harus angka positif (contoh: 25000 atau 25.000).");
     return;
   }
   if (!description) {
@@ -629,44 +706,57 @@ async function handleSaveMenuItem() {
     return;
   }
 
-  const payload = {
-    name,
-    price,
-    description,
-    image_url,
-    portion: portionInput ? portionInput.value : "Porsi Mantap",
-    badge: badgeInput ? badgeInput.value : null,
-    rating: ratingInput ? parseFloat(ratingInput.value) : 4.9,
-    is_available: availableCheck ? availableCheck.checked : true,
-    is_best_seller: bestSellerCheck ? bestSellerCheck.checked : false
-  };
-
+  isSavingMenuItem = true;
   if (btnSave) {
     btnSave.disabled = true;
     btnSave.textContent = "Menyimpan...";
   }
 
-  let res;
-  if (id) {
-    res = await updateMenuItem(id, payload);
-  } else {
-    res = await createMenuItem(payload);
-  }
+  try {
+    const payload = {
+      name,
+      price,
+      description,
+      image_url,
+      portion: portionInput ? (portionInput.value.trim() || "Porsi Mantap") : "Porsi Mantap",
+      badge: badgeInput ? (badgeInput.value.trim() || null) : null,
+      rating: ratingInput ? Math.min(5.0, Math.max(1.0, parseFloat(ratingInput.value) || 4.9)) : 4.9,
+      is_available: availableCheck ? availableCheck.checked : true,
+      is_best_seller: bestSellerCheck ? bestSellerCheck.checked : false
+    };
 
-  if (btnSave) {
-    btnSave.disabled = false;
-    btnSave.textContent = "Simpan Menu";
-  }
+    let res;
+    if (id) {
+      res = await updateMenuItem(id, payload);
+    } else {
+      res = await createMenuItem(payload);
+    }
 
-  if (!res.success) {
-    showMenuModalAlert(res.error || "Gagal menyimpan menu.");
-    return;
-  }
+    if (!res.success) {
+      showMenuModalAlert(res.error || "Gagal menyimpan menu.");
+      return;
+    }
 
-  closeMenuModal();
-  showToast(id ? "Menu berhasil diperbarui!" : "Menu baru berhasil ditambahkan!", "success");
-  await loadMenuItems();
-  updateOverviewMetrics();
+    closeMenuModal();
+    const successMsg = id 
+      ? `Menu "${name}" berhasil diperbarui!`
+      : (res.isLive 
+          ? `Menu "${name}" berhasil ditambahkan ke database Supabase!` 
+          : `Menu "${name}" berhasil ditambahkan ke daftar menu!`);
+    showToast(successMsg, "success");
+
+    await loadMenuItems();
+    updateOverviewMetrics();
+  } catch (err) {
+    console.error("[CMS Save Menu] Error:", err);
+    showMenuModalAlert("Terjadi kendala saat menyimpan: " + (err.message || "Unknown error"));
+  } finally {
+    isSavingMenuItem = false;
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.textContent = "Simpan Menu";
+    }
+  }
 }
 
 function showMenuModalAlert(msg) {
@@ -674,6 +764,9 @@ function showMenuModalAlert(msg) {
   if (!alertEl) return;
   alertEl.textContent = msg;
   alertEl.style.display = "block";
+  try {
+    alertEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch {}
 }
 
 // =============================================================================

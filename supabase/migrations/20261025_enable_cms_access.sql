@@ -35,3 +35,24 @@ CREATE POLICY "Public can update site settings"
   TO public
   USING (true)
   WITH CHECK (true);
+
+-- 4. Tabel Pesanan Pelanggan (customer_orders)
+CREATE TABLE IF NOT EXISTS public.customer_orders (
+  id TEXT PRIMARY KEY,
+  customer JSONB NOT NULL,
+  items JSONB NOT NULL,
+  total INTEGER NOT NULL,
+  item_count INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'baru',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.customer_orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can manage orders" ON public.customer_orders;
+CREATE POLICY "Public can manage orders"
+  ON public.customer_orders FOR ALL
+  TO public
+  USING (true)
+  WITH CHECK (true);
+
