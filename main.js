@@ -575,7 +575,7 @@ function renderMenuCards() {
             ${isAvailable ? `
               <button 
                 type="button"
-                class="btn-order-item ${product.isBestSeller ? 'btn-order-primary' : ''}" 
+                class="btn-order-item btn-order-primary" 
                 data-add-to-cart="${product.id}"
                 aria-label="Tambah ${product.name} seharga ${formatRupiah(product.price)}"
               >
@@ -634,6 +634,25 @@ function triggerCartButtonFeedback(productId) {
 // =============================================================================
 // 7. CART DRAWER & UI UPDATES
 // =============================================================================
+export function openCartDrawer() {
+  const cartDrawer = document.getElementById("cartDrawer");
+  const cartOverlay = document.getElementById("cartOverlay");
+  if (!cartDrawer) return;
+  cartDrawer.classList.add("open");
+  if (cartOverlay) cartOverlay.classList.add("open");
+  document.body.style.overflow = "hidden";
+  cartDrawer.focus();
+}
+
+export function closeCartDrawer() {
+  const cartDrawer = document.getElementById("cartDrawer");
+  const cartOverlay = document.getElementById("cartOverlay");
+  if (!cartDrawer) return;
+  cartDrawer.classList.remove("open");
+  if (cartOverlay) cartOverlay.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
 function initCartDrawer() {
   const openCartBtn = document.getElementById("openCartBtn");
   const mobileNavCartBtn = document.getElementById("mobileNavCartBtn");
@@ -645,22 +664,7 @@ function initCartDrawer() {
   const btnBackToOrder = document.getElementById("btnBackToOrder");
   const btnReopenWa = document.getElementById("btnReopenWa");
 
-  const openDrawer = () => {
-    if (!cartDrawer) return;
-    cartDrawer.classList.add("open");
-    if (cartOverlay) cartOverlay.classList.add("open");
-    document.body.style.overflow = "hidden";
-    cartDrawer.focus();
-  };
-
-  const closeDrawer = () => {
-    if (!cartDrawer) return;
-    cartDrawer.classList.remove("open");
-    if (cartOverlay) cartOverlay.classList.remove("open");
-    document.body.style.overflow = "";
-  };
-
-  if (openCartBtn) openCartBtn.addEventListener("click", openDrawer);
+  if (openCartBtn) openCartBtn.addEventListener("click", openCartDrawer);
   if (mobileNavCartBtn) {
     mobileNavCartBtn.addEventListener("click", () => {
       const mobileNav = document.getElementById("mobileNav");
@@ -668,17 +672,17 @@ function initCartDrawer() {
         const hamburgerBtn = document.getElementById("hamburgerBtn");
         if (hamburgerBtn) hamburgerBtn.click();
       }
-      openDrawer();
+      openCartDrawer();
     });
   }
-  if (stickyViewCartBtn) stickyViewCartBtn.addEventListener("click", openDrawer);
-  if (closeCartBtn) closeCartBtn.addEventListener("click", closeDrawer);
-  if (cartOverlay) cartOverlay.addEventListener("click", closeDrawer);
+  if (stickyViewCartBtn) stickyViewCartBtn.addEventListener("click", openCartDrawer);
+  if (closeCartBtn) closeCartBtn.addEventListener("click", closeCartDrawer);
+  if (cartOverlay) cartOverlay.addEventListener("click", closeCartDrawer);
 
   // Close on Escape key
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && cartDrawer && cartDrawer.classList.contains("open")) {
-      closeDrawer();
+      closeCartDrawer();
     }
   });
 
