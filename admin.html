@@ -1106,36 +1106,16 @@
         </div>
       </div>
 
-      <!-- Controls & Tuning Bar -->
-      <div class="ai-controls-card">
-        <div class="form-grid-3">
-          <div class="form-group mb-0">
-            <label for="aiSensitivityRange" class="form-label" style="display: flex; justify-content: space-between;">
-              <span>Sensitivitas AI (Toleransi)</span>
-              <strong id="aiSensitivityVal">32%</strong>
-            </label>
-            <input type="range" id="aiSensitivityRange" min="5" max="85" value="32" class="form-range"
-              style="width: 100%;">
-            <span class="field-help">Tingkatkan jika sisa latar belakang belum hilang semua.</span>
-          </div>
-          <div class="form-group mb-0">
-            <label for="aiFeatherRange" class="form-label" style="display: flex; justify-content: space-between;">
-              <span>Kehalusan Tepi (Feather)</span>
-              <strong id="aiFeatherVal">2 px</strong>
-            </label>
-            <input type="range" id="aiFeatherRange" min="0" max="8" value="2" class="form-range" style="width: 100%;">
-            <span class="field-help">Menghaluskan lekukan tepi agar tidak bergerigi.</span>
-          </div>
-          <div class="form-group mb-0">
-            <label for="aiBgModeSelect" class="form-label">Mode Deteksi Background</label>
-            <select id="aiBgModeSelect" class="form-input form-select-sm">
-              <option value="auto">Otomatis (Deteksi Sudut &amp; Tepi)</option>
-              <option value="white">Latar Belakang Putih (#FFF)</option>
-              <option value="black">Latar Belakang Hitam (#000)</option>
-            </select>
-            <span class="field-help">Pilih mode deteksi warna latar.</span>
+      <!-- PhotoRoom Style Auto Background Removal Status -->
+      <div class="ai-photoroom-banner" style="display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 12px 18px; border-radius: 8px; margin-top: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #DCFCE7; color: #16A34A; font-weight: bold; font-size: 15px;">✓</span>
+          <div>
+            <strong style="font-size: 0.9rem; color: #1E293B; display: block;">PhotoRoom Auto Remove BG:</strong>
+            <span style="font-size: 0.82rem; color: #64748B;">Latar belakang langsung dideteksi dan dipotong menjadi transparan bersih secara instan &amp; otomatis.</span>
           </div>
         </div>
+        <span class="preview-badge-pill" style="background: #E0E7FF; color: #3730A3; font-weight: 700;">100% Otomatis</span>
       </div>
 
       <!-- Mandatory Approval & Apply Box -->

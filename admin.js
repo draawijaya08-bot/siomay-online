@@ -1666,13 +1666,6 @@ function initAiStudioHandlers() {
   const btnLoadLogo = document.getElementById("btnAiStudioLoadLogo");
   const btnLoadFavicon = document.getElementById("btnAiStudioLoadFavicon");
 
-  // Sliders & Controls
-  const sensitivityRange = document.getElementById("aiSensitivityRange");
-  const sensitivityVal = document.getElementById("aiSensitivityVal");
-  const featherRange = document.getElementById("aiFeatherRange");
-  const featherVal = document.getElementById("aiFeatherVal");
-  const bgModeSelect = document.getElementById("aiBgModeSelect");
-
   // Approval buttons
   const btnApproveLogo = document.getElementById("btnApproveAiLogo");
   const btnApproveFavicon = document.getElementById("btnApproveAiFavicon");
@@ -1807,34 +1800,6 @@ function initAiStudioHandlers() {
     });
   });
 
-  // Sliders with debounced execution
-  if (sensitivityRange) {
-    sensitivityRange.addEventListener("input", (e) => {
-      if (sensitivityVal) sensitivityVal.textContent = e.target.value + "%";
-      scheduleAiExecution();
-    });
-  }
-
-  if (featherRange) {
-    featherRange.addEventListener("input", (e) => {
-      if (featherVal) featherVal.textContent = e.target.value + " px";
-      scheduleAiExecution();
-    });
-  }
-
-  if (bgModeSelect) {
-    bgModeSelect.addEventListener("change", () => {
-      scheduleAiExecution();
-    });
-  }
-
-  function scheduleAiExecution() {
-    clearTimeout(aiDebounceTimer);
-    aiDebounceTimer = setTimeout(() => {
-      if (currentAiSourceImg) executeAiBackgroundRemoval();
-    }, 120);
-  }
-
   function resetAiStudioState() {
     processedAiCanvas = null;
     processedAiDataUrl = null;
@@ -1907,6 +1872,11 @@ function initAiStudioHandlers() {
     }
   }
 
+  /**
+   * PhotoRoom-Style Automatic Background Remover
+   * Pure 1-click automatic connected flood-fill cutout without manual sliders or size tuning.
+   * Identifies background from borders, removes outer connected areas, and softens edges smoothly.
+   */
   function executeAiBackgroundRemoval() {
     if (!currentAiSourceImg) return;
 
@@ -1917,15 +1887,10 @@ function initAiStudioHandlers() {
 
     if (processingEl) processingEl.style.display = "flex";
 
-    // Small delay to allow UI spinner render
     setTimeout(() => {
       try {
-        const tolerance = parseInt(sensitivityRange?.value || "32", 10);
-        const feather = parseInt(featherRange?.value || "2", 10);
-        const mode = bgModeSelect?.value || "auto";
-
         const canvas = document.createElement("canvas");
-        const maxDim = 1000;
+        const maxDim = 1200;
         let w = currentAiSourceImg.naturalWidth || currentAiSourceImg.width || 400;
         let h = currentAiSourceImg.naturalHeight || currentAiSourceImg.height || 400;
 
@@ -1945,53 +1910,188 @@ function initAiStudioHandlers() {
         ctx.drawImage(currentAiSourceImg, 0, 0, w, h);
 
         const imgData = ctx.getImageData(0, 0, w, h);
-        const d = imgData.data;
+        const data = imgData.data;
+        const totalPixels = w * h;
 
-        // Background color samples
-        let bgSamples = [];
-        if (mode === "white") {
-          bgSamples = [{ r: 255, g: 255, b: 255 }];
-        } else if (mode === "black") {
-          bgSamples = [{ r: 0, g: 0, b: 0 }];
-        } else {
-          // Auto sample corner & boundary pixels
-          const coords = [
-            [0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1],
-            [Math.floor(w / 2), 0], [0, Math.floor(h / 2)],
-            [w - 1, Math.floor(h / 2)], [Math.floor(w / 2), h - 1],
-            [Math.floor(w / 4), 0], [Math.floor((3 * w) / 4), 0]
-          ];
-          coords.forEach(([cx, cy]) => {
-            const idx = (cy * w + cx) * 4;
-            bgSamples.push({ r: d[idx], g: d[idx + 1], b: d[idx + 2] });
-          });
+        // 1. Sample Background Colors from Outer Perimeter
+        const borderPixels = [];
+        for (let x = 0; x < w; x++) {
+          const topIdx = x * 4;
+          const botIdx = ((h - 1) * w + x) * 4;
+          borderPixels.push({ r: data[topIdx], g: data[topIdx + 1], b: data[topIdx + 2], a: data[topIdx + 3] });
+          borderPixels.push({ r: data[botIdx], g: data[botIdx + 1], b: data[botIdx + 2], a: data[botIdx + 3] });
+        }
+        for (let y = 1; y < h - 1; y++) {
+          const leftIdx = (y * w) * 4;
+          const rightIdx = (y * w + (w - 1)) * 4;
+          borderPixels.push({ r: data[leftIdx], g: data[leftIdx + 1], b: data[leftIdx + 2], a: data[leftIdx + 3] });
+          borderPixels.push({ r: data[rightIdx], g: data[rightIdx + 1], b: data[rightIdx + 2], a: data[rightIdx + 3] });
         }
 
-        const thresholdDist = (tolerance / 100) * 280;
-        const featherDist = Math.max(8, thresholdDist * (feather * 0.18));
+        const opaqueBorders = borderPixels.filter(p => p.a > 30);
+        let bgPalette = [];
 
-        for (let i = 0; i < d.length; i += 4) {
-          const r = d[i];
-          const g = d[i + 1];
-          const b = d[i + 2];
-          const a = d[i + 3];
-
-          if (a === 0) continue;
-
-          let minDist = Infinity;
-          for (let s = 0; s < bgSamples.length; s++) {
-            const dr = r - bgSamples[s].r;
-            const dg = g - bgSamples[s].g;
-            const db = b - bgSamples[s].b;
-            const dist = Math.sqrt(dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11);
-            if (dist < minDist) minDist = dist;
+        if (opaqueBorders.length > 0) {
+          // Bin colors into 16x16x16 space to find dominant border color clusters
+          const bins = new Map();
+          for (let i = 0; i < opaqueBorders.length; i++) {
+            const p = opaqueBorders[i];
+            const binKey = `${Math.floor(p.r / 16)}_${Math.floor(p.g / 16)}_${Math.floor(p.b / 16)}`;
+            if (!bins.has(binKey)) {
+              bins.set(binKey, { rSum: p.r, gSum: p.g, bSum: p.b, count: 1 });
+            } else {
+              const b = bins.get(binKey);
+              b.rSum += p.r;
+              b.gSum += p.g;
+              b.bSum += p.b;
+              b.count++;
+            }
           }
 
-          if (minDist < thresholdDist - featherDist) {
-            d[i + 3] = 0;
-          } else if (minDist < thresholdDist) {
-            const factor = (minDist - (thresholdDist - featherDist)) / featherDist;
-            d[i + 3] = Math.round(a * Math.min(1, Math.max(0, factor)));
+          const sortedBins = Array.from(bins.values()).sort((a, b) => b.count - a.count);
+          const topClusters = sortedBins.slice(0, 4);
+          bgPalette = topClusters.map(c => ({
+            r: Math.round(c.rSum / c.count),
+            g: Math.round(c.gSum / c.count),
+            b: Math.round(c.bSum / c.count)
+          }));
+        }
+
+        // Add 4 corner pixels to background palette if opaque
+        const cornerIdxs = [0, (w - 1) * 4, ((h - 1) * w) * 4, ((h - 1) * w + (w - 1)) * 4];
+        cornerIdxs.forEach(idx => {
+          if (data[idx + 3] > 30) {
+            bgPalette.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+          }
+        });
+
+        // 2. Connected Component Flood Fill (Seeds from Outer Perimeter)
+        const isBg = new Uint8Array(totalPixels);
+        const queue = new Int32Array(totalPixels);
+        let qHead = 0;
+        let qTail = 0;
+
+        const calcColorDist = (r1, g1, b1, r2, g2, b2) => {
+          const dr = r1 - r2;
+          const dg = g1 - g2;
+          const db = b1 - b2;
+          return Math.sqrt(0.299 * dr * dr + 0.587 * dg * dg + 0.114 * db * db);
+        };
+
+        const bgTolerance = 44; // Balanced automatic tolerance for crisp edge detection
+        const isBgColor = (pxIdx) => {
+          const a = data[pxIdx + 3];
+          if (a <= 25) return true; // already transparent
+          if (bgPalette.length === 0) return false;
+
+          const r = data[pxIdx];
+          const g = data[pxIdx + 1];
+          const b = data[pxIdx + 2];
+
+          for (let i = 0; i < bgPalette.length; i++) {
+            const dist = calcColorDist(r, g, b, bgPalette[i].r, bgPalette[i].g, bgPalette[i].b);
+            if (dist <= bgTolerance) return true;
+          }
+          return false;
+        };
+
+        // Enqueue perimeter seed pixels
+        for (let x = 0; x < w; x++) {
+          const topP = x;
+          const botP = (h - 1) * w + x;
+          if (isBgColor(topP * 4)) {
+            isBg[topP] = 1;
+            queue[qTail++] = topP;
+          }
+          if (isBgColor(botP * 4)) {
+            isBg[botP] = 1;
+            queue[qTail++] = botP;
+          }
+        }
+        for (let y = 1; y < h - 1; y++) {
+          const leftP = y * w;
+          const rightP = y * w + (w - 1);
+          if (isBgColor(leftP * 4) && isBg[leftP] === 0) {
+            isBg[leftP] = 1;
+            queue[qTail++] = leftP;
+          }
+          if (isBgColor(rightP * 4) && isBg[rightP] === 0) {
+            isBg[rightP] = 1;
+            queue[qTail++] = rightP;
+          }
+        }
+
+        // Flood fill outward from borders
+        while (qHead < qTail) {
+          const p = queue[qHead++];
+          const px = p % w;
+          const py = (p / w) | 0;
+
+          if (px > 0) {
+            const np = p - 1;
+            if (isBg[np] === 0 && isBgColor(np * 4)) {
+              isBg[np] = 1;
+              queue[qTail++] = np;
+            }
+          }
+          if (px < w - 1) {
+            const np = p + 1;
+            if (isBg[np] === 0 && isBgColor(np * 4)) {
+              isBg[np] = 1;
+              queue[qTail++] = np;
+            }
+          }
+          if (py > 0) {
+            const np = p - w;
+            if (isBg[np] === 0 && isBgColor(np * 4)) {
+              isBg[np] = 1;
+              queue[qTail++] = np;
+            }
+          }
+          if (py < h - 1) {
+            const np = p + w;
+            if (isBg[np] === 0 && isBgColor(np * 4)) {
+              isBg[np] = 1;
+              queue[qTail++] = np;
+            }
+          }
+        }
+
+        // 3. Clear Background & Soften Edge Feathering
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const p = y * w + x;
+            const idx = p * 4;
+
+            if (isBg[p] === 1) {
+              data[idx + 3] = 0; // Pure transparent background
+            } else {
+              // Edge smoothing for antialiased outline
+              let bgNeighborCount = 0;
+              let totalNeighborCount = 0;
+
+              for (let dy = -1; dy <= 1; dy++) {
+                const ny = y + dy;
+                if (ny < 0 || ny >= h) continue;
+                for (let dx = -1; dx <= 1; dx++) {
+                  const nx = x + dx;
+                  if (nx < 0 || nx >= w) continue;
+                  totalNeighborCount++;
+                  if (isBg[ny * w + nx] === 1) {
+                    bgNeighborCount++;
+                  }
+                }
+              }
+
+              if (bgNeighborCount > 0 && totalNeighborCount > 0) {
+                const bgRatio = bgNeighborCount / totalNeighborCount;
+                if (bgRatio >= 0.6) {
+                  data[idx + 3] = Math.round(data[idx + 3] * (1 - bgRatio * 0.85));
+                } else if (bgRatio >= 0.3) {
+                  data[idx + 3] = Math.round(data[idx + 3] * (1 - bgRatio * 0.5));
+                }
+              }
+            }
           }
         }
 
@@ -2013,7 +2113,7 @@ function initAiStudioHandlers() {
         processedAiDataUrl = canvas.toDataURL("image/png");
 
         if (badge) {
-          badge.textContent = "Siap Disetujui (Draft)";
+          badge.textContent = "Selesai (PhotoRoom Auto Cutout)";
           badge.style.background = "#DCFCE7";
           badge.style.color = "#15803D";
         }

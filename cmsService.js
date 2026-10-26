@@ -859,7 +859,9 @@ function fileToDataUrl(file, maxWidth = 800, maxHeight = 800, quality = 0.82) {
             canvas.height = height;
             const ctx = canvas.getContext("2d");
             ctx.drawImage(img, 0, 0, width, height);
-            const compressedUrl = canvas.toDataURL("image/jpeg", quality);
+            const isPng = file.type === "image/png" || (file.name && file.name.toLowerCase().endsWith(".png"));
+            const outputFormat = isPng ? "image/png" : "image/jpeg";
+            const compressedUrl = canvas.toDataURL(outputFormat, isPng ? undefined : quality);
             resolve(compressedUrl);
           } catch {
             resolve(e.target.result);
@@ -976,7 +978,11 @@ export async function uploadDataUrlToStorage(dataUrl, folder = "branding", filen
     const res = await fetch(dataUrl);
     const blob = await res.blob();
     const file = new File([blob], filename, { type: "image/png" });
-    return await uploadMediaFile(file, folder);
+    const upRes = await uploadMediaFile(file, folder);
+    if (upRes.success && upRes.url) {
+      return upRes;
+    }
+    return { success: true, url: dataUrl, isLocal: true };
   } catch (err) {
     return { success: true, url: dataUrl, isLocal: true };
   }
