@@ -27,7 +27,54 @@ const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
 export async function loginOwner(email, password) {
   const cleanEmail = (email || "").trim().toLowerCase();
 
-  // Allow demo credentials to easily inspect the dashboard in all environments
+  // 1. If Supabase is configured, ALWAYS authenticate via real Supabase Auth first
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password
+      });
+
+      if (authError) throw authError;
+
+      // Verify or auto-register into public.admin_users
+      try {
+        await supabase.from("admin_users").upsert({
+          id: authData.user.id,
+          email: authData.user.email,
+          role: "owner"
+        });
+      } catch (e) {
+        console.warn("[CMS Auth] Auto-register admin_users notice:", e);
+      }
+
+      const userWithRole = {
+        ...authData.user,
+        role: "owner"
+      };
+
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("siomay_demo_owner", JSON.stringify(userWithRole));
+      }
+
+      return {
+        success: true,
+        user: userWithRole,
+        session: authData.session
+      };
+    } catch (err) {
+      console.error("[CMS Auth] Supabase login error:", err);
+
+      return {
+        success: false,
+        error: err.message === "Invalid login credentials"
+          ? "Email atau kata sandi salah. Silakan periksa kembali."
+          : (err.message || "Gagal masuk. Periksa kembali email dan password Anda.")
+      };
+    }
+  }
+
+  // 2. Offline / local-only fallback
   if ((cleanEmail === "admin@siomayonline.com" || cleanEmail === "owner@siomayonline.com" || cleanEmail === "demo@siomayonline.com") && password === "admin123") {
     const demoUser = { id: "demo-owner", email: cleanEmail, role: "owner" };
     if (typeof sessionStorage !== "undefined") {
@@ -40,44 +87,10 @@ export async function loginOwner(email, password) {
     };
   }
 
-  if (!isSupabaseConfigured || !supabase) {
-    return {
-      success: false,
-      error: "Koneksi ke database Supabase belum terhubung. Silakan periksa konfigurasi kredensial Anda."
-    };
-  }
-
-  try {
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password
-    });
-
-    if (authError) throw authError;
-
-    // Verify or auto-register into public.admin_users
-    try {
-      await supabase.from("admin_users").upsert({
-        id: authData.user.id,
-        email: authData.user.email,
-        role: "owner"
-      });
-    } catch (e) {
-      console.warn("[CMS Auth] Auto-register admin_users notice:", e);
-    }
-
-    return {
-      success: true,
-      user: authData.user,
-      session: authData.session
-    };
-  } catch (err) {
-    console.error("[CMS Auth] Login error:", err);
-    return {
-      success: false,
-      error: err.message || "Gagal masuk. Periksa kembali email dan password Anda."
-    };
-  }
+  return {
+    success: false,
+    error: "Koneksi ke database Supabase belum terhubung. Silakan periksa konfigurasi kredensial Anda."
+  };
 }
 
 /**
@@ -100,25 +113,22 @@ export async function logoutOwner() {
  * Get current session and verify owner authorization
  */
 export async function getCurrentOwner() {
-  // 1. If Supabase is connected, ALWAYS verify real Supabase Auth session first
+  // 1. If Supabase is connected, verify real Supabase Auth session first
   if (isSupabaseConfigured && supabase) {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (!error && session?.user) {
-        return session.user;
+        return {
+          ...session.user,
+          role: "owner"
+        };
       }
     } catch {
       // ignore
     }
-
-    // Clean up stale mock demo session from browser storage if present
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.removeItem("siomay_demo_owner");
-    }
-    return null;
   }
 
-  // 2. Offline / local-only buffer fallback
+  // 2. Check session storage (for offline buffer fallback or tests)
   if (typeof sessionStorage !== "undefined") {
     const stored = sessionStorage.getItem("siomay_demo_owner");
     if (stored) {
