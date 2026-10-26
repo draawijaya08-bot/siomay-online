@@ -19,6 +19,7 @@ import {
   createMenuItem, 
   updateMenuItem, 
   deleteMenuItem, 
+  deleteMenuItems, 
   fetchSiteSettings, 
   updateSiteSettings, 
   uploadMediaFile,
@@ -33,10 +34,43 @@ import { formatReviewDate } from "./reviews.js";
 // Global CMS State
 let currentOwner = null;
 let menuItems = [];
+let selectedMenuIds = new Set();
 let isSavingMenuItem = false;
 let siteSettings = null;
 let allOrders = [];
 let currentOrderFilter = "all";
+
+function updateBulkSelectionUi() {
+  const btnDeleteSelected = document.getElementById("btnDeleteSelectedMenu");
+  const btnDeleteSelectedLabel = document.getElementById("btnDeleteSelectedMenuLabel");
+  const chkSelectAll = document.getElementById("chkSelectAllMenu");
+  const selectionStatusText = document.getElementById("menuSelectionStatusText");
+
+  const total = menuItems.length;
+  const selected = selectedMenuIds.size;
+
+  if (btnDeleteSelected) {
+    if (selected > 0) {
+      btnDeleteSelected.style.display = "inline-flex";
+      if (btnDeleteSelectedLabel) {
+        btnDeleteSelectedLabel.textContent = `Hapus Terpilih (${selected})`;
+      }
+    } else {
+      btnDeleteSelected.style.display = "none";
+    }
+  }
+
+  if (selectionStatusText) {
+    selectionStatusText.textContent = selected > 0
+      ? `${selected} dari ${total} menu dipilih`
+      : `0 dari ${total} menu dipilih`;
+  }
+
+  if (chkSelectAll) {
+    chkSelectAll.checked = total > 0 && selected === total;
+    chkSelectAll.indeterminate = selected > 0 && selected < total;
+  }
+}
 
 // =============================================================================
 // INITIALIZATION
@@ -412,85 +446,68 @@ function initMenuHandlers() {
   if (btnCancelModal) btnCancelModal.addEventListener("click", () => closeMenuModal());
   if (overlay) overlay.addEventListener("click", () => closeMenuModal());
 
-  // Copy Supabase SQL Helper Button
-  const btnCopySql = document.getElementById("btnCopySupabaseSql");
-  if (btnCopySql) {
-    btnCopySql.addEventListener("click", () => {
-      const sqlText = `-- SIOMAY ONLINE — ENABLE FULL CMS ACCESS
--- Jalankan skrip ini di Supabase SQL Editor:
-DROP POLICY IF EXISTS "Owner can manage menu items" ON public.menu_items;
-DROP POLICY IF EXISTS "Public can manage menu items" ON public.menu_items;
-CREATE POLICY "Public can manage menu items"
-  ON public.menu_items FOR ALL
-  TO public
-  USING (true)
-  WITH CHECK (true);
+  // Batch selection handlers
+  const chkSelectAll = document.getElementById("chkSelectAllMenu");
+  const btnDeleteSelected = document.getElementById("btnDeleteSelectedMenu");
 
-DROP POLICY IF EXISTS "Owner can upload media" ON storage.objects;
-DROP POLICY IF EXISTS "Owner can update media" ON storage.objects;
-DROP POLICY IF EXISTS "Owner can delete media" ON storage.objects;
-DROP POLICY IF EXISTS "Allow all access to media" ON storage.objects;
-CREATE POLICY "Allow all access to media"
-  ON storage.objects FOR ALL
-  TO public
-  USING (bucket_id = 'media')
-  WITH CHECK (bucket_id = 'media');
+  if (chkSelectAll) {
+    chkSelectAll.addEventListener("change", (e) => {
+      const isChecked = e.target.checked;
+      const checkboxes = document.querySelectorAll(".menu-item-checkbox");
+      selectedMenuIds.clear();
 
-DROP POLICY IF EXISTS "Owner can update site settings" ON public.site_settings;
-DROP POLICY IF EXISTS "Public can update site settings" ON public.site_settings;
-CREATE POLICY "Public can update site settings"
-  ON public.site_settings FOR ALL
-  TO public
-  USING (true)
-  WITH CHECK (true);
+      checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+        const id = cb.dataset.id;
+        const card = cb.closest(".cms-menu-card");
+        if (isChecked && id) {
+          selectedMenuIds.add(id);
+          if (card) {
+            card.style.borderColor = "#de4a1d";
+            card.style.backgroundColor = "#FFF7F5";
+          }
+        } else {
+          if (card) {
+            card.style.borderColor = "";
+            card.style.backgroundColor = "";
+          }
+        }
+      });
 
-CREATE TABLE IF NOT EXISTS public.customer_orders (
-  id TEXT PRIMARY KEY,
-  customer JSONB NOT NULL,
-  items JSONB NOT NULL,
-  total INTEGER NOT NULL,
-  item_count INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'baru',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.customer_orders ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public can manage orders" ON public.customer_orders;
-CREATE POLICY "Public can manage orders"
-  ON public.customer_orders FOR ALL
-  TO public
-  USING (true)
-  WITH CHECK (true);`;
-
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(sqlText).then(() => {
-          showToast("Skrip SQL berhasil disalin! Silakan jalankan di Supabase SQL Editor.", "success");
-        }).catch(() => {
-          prompt("Salin skrip SQL Supabase berikut:", sqlText);
-        });
-      } else {
-        prompt("Salin skrip SQL Supabase berikut:", sqlText);
-      }
+      updateBulkSelectionUi();
     });
   }
 
-  // Detect Supabase DB write status dynamically
-  testSupabaseMenuWriteAccess().then(hasWriteAccess => {
-    const badge = document.getElementById("cmsDbBadge");
-    const dbStatus = document.getElementById("cmsDbStatusIndicator");
-    if (hasWriteAccess) {
-      if (badge) {
-        badge.textContent = "Supabase Cloud Database Terhubung";
-        badge.style.backgroundColor = "#D1FAE5";
-        badge.style.color = "#065F46";
+  if (btnDeleteSelected) {
+    btnDeleteSelected.addEventListener("click", async () => {
+      if (selectedMenuIds.size === 0) return;
+
+      const count = selectedMenuIds.size;
+      if (confirm(`Yakin ingin menghapus ${count} menu yang dipilih secara permanen?`)) {
+        btnDeleteSelected.disabled = true;
+        btnDeleteSelected.innerHTML = `<span>Menghapus ${count} menu...</span>`;
+
+        try {
+          const idsArray = Array.from(selectedMenuIds);
+          const res = await deleteMenuItems(idsArray);
+
+          if (res.success) {
+            showToast(`${count} menu yang dipilih berhasil dihapus!`, "success");
+            selectedMenuIds.clear();
+            await loadMenuItems();
+            updateOverviewMetrics();
+          } else {
+            showToast(`Gagal menghapus menu: ${res.error}`, "error");
+          }
+        } catch (err) {
+          showToast(`Terjadi kesalahan: ${err.message}`, "error");
+        } finally {
+          btnDeleteSelected.disabled = false;
+          updateBulkSelectionUi();
+        }
       }
-      if (dbStatus) {
-        dbStatus.innerHTML = `<span class="status-dot"></span> Supabase Cloud Aktif`;
-        dbStatus.className = "cms-db-status status-connected";
-      }
-    }
-  });
+    });
+  }
 
   // Upload trigger
   if (btnUpload && fileInput) {
@@ -578,6 +595,8 @@ function renderMenuGrid(items) {
   if (!grid) return;
 
   grid.innerHTML = "";
+  selectedMenuIds.clear();
+  updateBulkSelectionUi();
 
   items.forEach(item => {
     const card = document.createElement("article");
@@ -587,9 +606,12 @@ function renderMenuGrid(items) {
     const priceFormatted = "Rp" + Math.round(item.price).toLocaleString("id-ID");
 
     card.innerHTML = `
-      <div class="menu-card-img-wrap">
+      <div class="menu-card-img-wrap" style="position: relative;">
+        <label class="menu-card-select-label" title="Pilih menu ini untuk dihapus" style="position: absolute; top: 10px; left: 10px; z-index: 6; background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; padding: 4px 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.18);">
+          <input type="checkbox" class="menu-item-checkbox" data-id="${item.id}" data-name="${item.name}" style="width: 17px; height: 17px; cursor: pointer; accent-color: #de4a1d; margin: 0;">
+        </label>
         <img src="${item.image_url}" alt="${item.name}" class="menu-thumb" loading="lazy">
-        <div class="menu-status-badge ${item.is_available ? 'badge-available' : 'badge-out-of-stock'}">
+        <div class="menu-status-badge ${item.is_available ? 'badge-available' : 'badge-out-of-stock'}" style="left: 48px;">
           ${item.is_available ? 'Tersedia' : 'Stok Habis'}
         </div>
         ${item.is_best_seller ? '<span class="menu-bestseller-tag">Best Seller</span>' : ''}
@@ -622,6 +644,24 @@ function renderMenuGrid(items) {
         </div>
       </div>
     `;
+
+    // Bind selection checkbox
+    const cb = card.querySelector(".menu-item-checkbox");
+    if (cb) {
+      cb.addEventListener("change", (e) => {
+        const id = item.id;
+        if (e.target.checked) {
+          selectedMenuIds.add(id);
+          card.style.borderColor = "#de4a1d";
+          card.style.backgroundColor = "#FFF7F5";
+        } else {
+          selectedMenuIds.delete(id);
+          card.style.borderColor = "";
+          card.style.backgroundColor = "";
+        }
+        updateBulkSelectionUi();
+      });
+    }
 
     // Bind stock toggle
     const toggleBtn = card.querySelector(".btn-toggle-stock");

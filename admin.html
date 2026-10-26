@@ -365,40 +365,32 @@
            ====================================================================== -->
       <section id="viewMenu" class="cms-view" style="display: none;">
         <div class="container-cms">
-          <div class="view-header">
+          <div class="view-header" style="flex-wrap: wrap; gap: 12px; align-items: center;">
             <div>
               <h1 class="view-title">Kelola Menu Makanan</h1>
-              <p class="view-desc">Kelola daftar produk siomay, batagor, harga, deskripsi, foto, dan ketersediaan stok.
-              </p>
+              <p class="view-desc">Kelola daftar produk siomay, batagor, harga, deskripsi, foto, dan ketersediaan stok.</p>
             </div>
-            <button type="button" class="btn btn-primary" id="btnAddNewMenuItem">
-              <span>+ Tambah Menu Baru</span>
-            </button>
+            <div class="view-header-actions" style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+              <button type="button" class="btn btn-danger btn-sm" id="btnDeleteSelectedMenu" style="display: none; align-items: center; gap: 6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span id="btnDeleteSelectedMenuLabel">Hapus Terpilih (0)</span>
+              </button>
+              <button type="button" class="btn btn-primary" id="btnAddNewMenuItem">
+                <span>+ Tambah Menu Baru</span>
+              </button>
+            </div>
           </div>
 
-          <!-- Cloud DB Status & Quick SQL Action Banner -->
-          <div class="cms-db-banner" id="cmsDbNoticeBanner">
-            <div class="db-banner-text">
-              <span class="db-banner-badge" id="cmsDbBadge">Mode Live & Buffer</span>
-              <p class="db-banner-desc">Menu baru otomatis tersimpan dan aktif di website. Agar sinkron permanen di
-                database cloud Supabase antar perangkat, pastikan skrip otorisasi SQL telah aktif.</p>
-            </div>
-            <div class="db-banner-actions">
-              <button type="button" class="btn btn-secondary btn-sm" id="btnCopySupabaseSql"
-                title="Salin skrip SQL otorisasi ke clipboard">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span>Salin Skrip SQL</span>
-              </button>
-              <a href="https://supabase.com/dashboard/project/ykkrqtnvvpzqkbwphxuq/sql/new" target="_blank"
-                rel="noopener noreferrer" class="btn btn-secondary btn-sm"
-                title="Buka editor SQL di dashboard Supabase">
-                <span>Supabase SQL ↗</span>
-              </a>
-            </div>
+          <!-- Batch Selection Controls Bar -->
+          <div class="menu-bulk-bar" id="menuBulkBar" style="display: flex; align-items: center; justify-content: space-between; background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 16px; border-radius: 8px; margin-bottom: 20px;">
+            <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.88rem; font-weight: 600; color: #334155; margin-bottom: 0; user-select: none;">
+              <input type="checkbox" id="chkSelectAllMenu" style="width: 17px; height: 17px; cursor: pointer; accent-color: #de4a1d;">
+              <span>Pilih Semua Menu</span>
+            </label>
+            <span id="menuSelectionStatusText" style="font-size: 0.82rem; color: #64748B;">0 menu dipilih</span>
           </div>
 
           <div id="menuListLoading" class="cms-loading-state" style="display: none;">

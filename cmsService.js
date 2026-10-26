@@ -329,7 +329,19 @@ export function getLocalMenuItems() {
 
   try {
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : JSON.parse(JSON.stringify(DEFAULT_MENU_ITEMS));
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Purge any probe items
+      const cleaned = parsed.filter(item => {
+        const name = (item.name || "").toLowerCase();
+        const slug = (item.slug || "").toLowerCase();
+        return !name.includes("probe") && !slug.includes("probe");
+      });
+      if (cleaned.length !== parsed.length) {
+        saveLocalMenuItems(cleaned, { emitEvent: false });
+      }
+      return cleaned.length > 0 ? cleaned : JSON.parse(JSON.stringify(DEFAULT_MENU_ITEMS));
+    }
+    return JSON.parse(JSON.stringify(DEFAULT_MENU_ITEMS));
   } catch {
     return JSON.parse(JSON.stringify(DEFAULT_MENU_ITEMS));
   }
@@ -381,6 +393,11 @@ export async function fetchAllMenuItems() {
 
   if (isSupabaseConfigured && supabase) {
     try {
+      // Background cleanup: remove any probe check rows if they ever got inserted
+      try {
+        supabase.from("menu_items").delete().ilike("name", "%probe%").then(() => {});
+      } catch {}
+
       const { data, error } = await supabase
         .from("menu_items")
         .select("*")
@@ -388,8 +405,13 @@ export async function fetchAllMenuItems() {
         .order("created_at", { ascending: true });
 
       if (!error && Array.isArray(data) && data.length > 0) {
-        // Filter out any locally deleted items
-        const activeFromDb = data.filter(d => !deletedIds.has(d.id) && !deletedIds.has(d.slug));
+        // Filter out any locally deleted items and any probe check items
+        const activeFromDb = data.filter(d => {
+          const name = (d.name || "").toLowerCase();
+          const slug = (d.slug || "").toLowerCase();
+          const isProbe = name.includes("probe") || slug.includes("probe");
+          return !isProbe && !deletedIds.has(d.id) && !deletedIds.has(d.slug);
+        });
 
         // Map local edits/overrides
         const localOverrides = new Map();
@@ -420,7 +442,12 @@ export async function fetchAllMenuItems() {
     }
   }
 
-  const activeLocal = localItems.filter(l => !deletedIds.has(l.id));
+  const activeLocal = localItems.filter(l => {
+    const name = (l.name || "").toLowerCase();
+    const slug = (l.slug || "").toLowerCase();
+    const isProbe = name.includes("probe") || slug.includes("probe");
+    return !isProbe && !deletedIds.has(l.id);
+  });
   return { success: true, items: activeLocal, isLocal: true };
 }
 
@@ -604,6 +631,38 @@ export async function deleteMenuItem(id) {
   const filtered = getLocalMenuItems().filter(item => item.id !== id && item.slug !== id);
   saveLocalMenuItems(filtered);
   return { success: true };
+}
+
+/**
+ * Batch delete multiple menu items at once
+ */
+export async function deleteMenuItems(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { success: false, error: "Tidak ada menu yang dipilih untuk dihapus." };
+  }
+
+  const idSetToDelete = new Set(ids.map(String));
+  const sbIds = ids.filter(id => !String(id).startsWith("menu-"));
+
+  if (isSupabaseConfigured && supabase && sbIds.length > 0) {
+    try {
+      await supabase
+        .from("menu_items")
+        .delete()
+        .in("id", sbIds);
+    } catch (err) {
+      console.warn("[CMS Menu] Supabase batch delete notice:", err);
+    }
+  }
+
+  // Add to deleted set so fetchAllMenuItems does not resurrect them
+  const deletedSet = getLocalDeletedMenuIds();
+  ids.forEach(id => deletedSet.add(id));
+  saveLocalDeletedMenuIds(deletedSet);
+
+  const filtered = getLocalMenuItems().filter(item => !idSetToDelete.has(String(item.id)) && !idSetToDelete.has(String(item.slug)));
+  saveLocalMenuItems(filtered);
+  return { success: true, count: ids.length };
 }
 
 // =============================================================================
@@ -989,25 +1048,13 @@ export async function uploadDataUrlToStorage(dataUrl, folder = "branding", filen
 }
 
 /**
- * Check if current user has direct write access to Supabase menu_items
+ * Safe connection check for Supabase without inserting probe/dummy rows
  */
 export async function testSupabaseMenuWriteAccess() {
   if (!isSupabaseConfigured || !supabase) return false;
   try {
-    const probe = {
-      name: "__probe_check__",
-      price: 0,
-      description: "probe",
-      image_url: "/images/menu-original.jpg",
-      is_available: false,
-      slug: "__probe__" + Date.now().toString(36)
-    };
-    const { data, error } = await supabase.from("menu_items").insert([probe]).select().single();
-    if (!error && data) {
-      await supabase.from("menu_items").delete().eq("id", data.id);
-      return true;
-    }
-    return false;
+    const { error } = await supabase.from("site_settings").select("id").limit(1);
+    return !error;
   } catch {
     return false;
   }
