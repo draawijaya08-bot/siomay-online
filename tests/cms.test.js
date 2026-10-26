@@ -72,12 +72,14 @@ console.log("\nTest 2: admin.html Complete CMS Dashboard Views Verification...")
   assert.ok(html.includes('id="viewWhatsApp"'), "Contains WhatsApp settings view");
   assert.ok(html.includes('id="viewReviews"'), "Contains Reviews moderation view");
 
-  // Demo Account Box & 1-Click Login
-  assert.ok(html.includes('id="btnQuickDemoLogin"'), "Contains 1-Click demo login button");
-  assert.ok(html.includes("admin@siomayonline.com"), "Displays demo admin email");
-  assert.ok(html.includes("admin123"), "Displays demo admin password");
+  // Production Owner Login Form (No 1-Click Demo for Client Security)
+  assert.ok(html.includes('id="ownerEmail"'), "Contains Owner Email input field");
+  assert.ok(html.includes('id="ownerPassword"'), "Contains Owner Password input field");
+  assert.ok(html.includes('id="btnOwnerLogin"'), "Contains submit button to Dashboard");
+  assert.ok(!html.includes('id="btnQuickDemoLogin"'), "1-Click demo login button is removed for client security");
+  assert.ok(!html.includes('cms-demo-box'), "Demo credentials box is completely removed");
 
-  console.log("✓ admin.html contains all 5 required CMS management views, modal controls, and demo admin login.");
+  console.log("✓ admin.html contains all 5 required CMS management views and clean production login form.");
 }
 
 // -----------------------------------------------------------------------------

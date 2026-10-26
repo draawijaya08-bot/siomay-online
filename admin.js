@@ -82,7 +82,7 @@ async function checkAuthSession() {
     if (authScreen) authScreen.style.display = "flex";
     if (dashboard) dashboard.style.display = "none";
     if (!isSupabaseConfigured || !supabase) {
-      showAuthError("Supabase belum dikonfigurasi di file .env. Anda dapat masuk dengan akun demo (admin@siomayonline.com / admin123) untuk menguji moderasi ulasan dan CMS.");
+      showAuthError("Konfigurasi database Supabase belum terhubung. Pastikan environment telah disetup dengan benar.");
     }
   }
 }
@@ -136,29 +136,6 @@ function initAuthHandlers() {
         currentOwner = null;
         await checkAuthSession();
         showToast("Anda telah keluar dari CMS.", "info");
-      }
-    });
-  }
-
-  // Quick 1-Click Demo Login
-  const btnQuickDemo = document.getElementById("btnQuickDemoLogin");
-  if (btnQuickDemo) {
-    btnQuickDemo.addEventListener("click", async () => {
-      if (emailInput) emailInput.value = "admin@siomayonline.com";
-      if (passwordInput) passwordInput.value = "admin123";
-      hideAuthError();
-      btnQuickDemo.disabled = true;
-      btnQuickDemo.textContent = "Membuka Dashboard Demo...";
-      const res = await loginOwner("admin@siomayonline.com", "admin123");
-      btnQuickDemo.disabled = false;
-      btnQuickDemo.innerHTML = `<span>⚡ Masuk Cepat Akun Demo (1-Klik)</span>`;
-
-      if (res.success) {
-        currentOwner = res.user;
-        await checkAuthSession();
-        showToast("Berhasil masuk! Selamat datang di dashboard Admin Demo Siomay Online.", "success");
-      } else {
-        showAuthError(res.error || "Gagal masuk mode demo.");
       }
     });
   }

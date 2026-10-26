@@ -43,7 +43,7 @@ export async function loginOwner(email, password) {
   if (!isSupabaseConfigured || !supabase) {
     return {
       success: false,
-      error: "Supabase belum terhubung di .env. Gunakan akun demo (Email: admin@siomayonline.com, Password: admin123) untuk masuk."
+      error: "Koneksi ke database Supabase belum terhubung. Silakan periksa konfigurasi kredensial Anda."
     };
   }
 
