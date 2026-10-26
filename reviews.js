@@ -10,7 +10,13 @@
  */
 
 import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
-import { PRODUCTS } from "./main.js";
+import { DEFAULT_MENU_ITEMS } from "./cmsService.js";
+
+const PRODUCTS = (Array.isArray(DEFAULT_MENU_ITEMS) ? DEFAULT_MENU_ITEMS : []).map(item => ({
+  id: item.slug || item.id,
+  name: item.name,
+  price: item.price
+}));
 
 // Anti-spam submission cooldown duration (in milliseconds)
 const SUBMISSION_COOLDOWN_MS = 30000;
