@@ -72,47 +72,57 @@ export function renderStarsHtml(rating) {
 
 const LOCAL_STORAGE_REVIEWS_KEY = "siomay_customer_reviews_v1";
 
-// Initial seed reviews for instant rendering and offline resilience
+// Initial seed reviews for instant rendering and offline resilience (matching real customer reviews)
 const DEFAULT_SEED_REVIEWS = [
   {
-    id: "00000000-0000-0000-0000-000000000004",
-    display_name: "Caca",
+    id: "e8d4e410-ee28-415b-a323-6c46e9b751f9",
+    display_name: "andrreas",
     rating: 5,
-    comment: "Siomay kentangnya sangat lembut dan enak, bumbu kacangnya gurih legit bikin nagih!",
-    menu_item_id: "siomay-komplit",
-    menu_item_name: "Siomay Komplit",
+    comment: "enak banget",
+    menu_item_id: "siomay-original",
+    menu_item_name: "Siomay Original",
     status: "approved",
-    created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString()
+    created_at: "2026-10-26T06:15:36.135Z"
   },
   {
-    id: "00000000-0000-0000-0000-000000000001",
+    id: "7d7462c1-e8c8-4ba2-91ac-3d50a0588bf4",
+    display_name: "CLiet 1",
+    rating: 5,
+    comment: "Wih enak bangett",
+    menu_item_id: "siomay-original",
+    menu_item_name: "Siomay Original",
+    status: "approved",
+    created_at: "2026-10-26T04:42:12.120Z"
+  },
+  {
+    id: "88ade2e3-7722-4401-8407-f9ac847a0e84",
     display_name: "Budi Santoso",
     rating: 5,
     comment: "Siomaynya sangat lembut, ikannya berasa banget dan bumbu kacangnya gurih legit. Sampai di rumah masih hangat!",
     menu_item_id: "siomay-komplit",
     menu_item_name: "Siomay Komplit",
     status: "approved",
-    created_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString()
+    created_at: "2026-10-24T06:20:15.046Z"
   },
   {
-    id: "00000000-0000-0000-0000-000000000002",
+    id: "310a7bb0-70ff-43a1-8359-d73687ba89a1",
     display_name: "Sarah Mustika",
     rating: 5,
     comment: "Batagornya garing renyah di luar tapi empuk di dalam. Bumbu kacangnya melimpah dan tidak pelit jeruk limau.",
     menu_item_id: "batagor",
     menu_item_name: "Batagor",
     status: "approved",
-    created_at: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString()
+    created_at: "2026-10-23T06:20:15.049Z"
   },
   {
-    id: "00000000-0000-0000-0000-000000000003",
+    id: "9788c6ed-913c-40ba-9de7-0d976613c059",
     display_name: "Dimas Pratama",
     rating: 5,
     comment: "Pesan paket hemat buat makan siang sekantor di Klaten. Semua teman puji rasanya enak dan porsi mengenyangkan.",
     menu_item_id: "paket-hemat",
     menu_item_name: "Paket Hemat",
     status: "approved",
-    created_at: new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString()
+    created_at: "2026-10-22T06:20:15.049Z"
   }
 ];
 
@@ -126,8 +136,13 @@ export function getLocalReviews() {
       localStorage.setItem(LOCAL_STORAGE_REVIEWS_KEY, JSON.stringify(DEFAULT_SEED_REVIEWS));
       return [...DEFAULT_SEED_REVIEWS];
     }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [...DEFAULT_SEED_REVIEWS];
+    let parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return [...DEFAULT_SEED_REVIEWS];
+    }
+    // Clean any legacy test items
+    parsed = parsed.filter(r => r.display_name !== "Caca" && r.display_name !== "Test User");
+    return parsed.length > 0 ? parsed : [...DEFAULT_SEED_REVIEWS];
   } catch {
     return [...DEFAULT_SEED_REVIEWS];
   }
@@ -382,23 +397,30 @@ export async function submitCustomerReview({
   // If Supabase is connected, persist directly to customer_reviews
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
+      const { error: insApprovedErr } = await supabase
         .from("customer_reviews")
         .insert([{
+          id: savedId,
           display_name: cleanName,
           rating: cleanRating,
           comment: cleanComment,
           menu_item_id: cleanMenuItemId,
           menu_item_name: cleanMenuItemName,
           status: "approved"
-        }])
-        .select();
+        }]);
 
-      if (!error && Array.isArray(data) && data.length > 0 && data[0].id) {
-        savedId = data[0].id;
-        payload.id = savedId;
-      } else if (error) {
-        console.warn("[Reviews] Supabase save warning (fallback saved locally):", error);
+      if (insApprovedErr) {
+        await supabase
+          .from("customer_reviews")
+          .insert([{
+            id: savedId,
+            display_name: cleanName,
+            rating: cleanRating,
+            comment: cleanComment,
+            menu_item_id: cleanMenuItemId,
+            menu_item_name: cleanMenuItemName,
+            status: "pending"
+          }]);
       }
     } catch (err) {
       console.warn("[Reviews] Supabase network offline (fallback saved locally):", err);
@@ -414,7 +436,7 @@ export async function submitCustomerReview({
     console.warn("Gagal simpan ke buffer lokal:", err);
   }
 
-  // Record ownership so author can delete their review if needed
+  // Record ownership so author can edit or delete their review if needed
   saveMyReviewId(savedId);
 
   // Set cooldown timestamp
@@ -470,6 +492,105 @@ export async function deleteCustomerReview(reviewId) {
   return {
     success: true,
     message: "Ulasan berhasil dihapus."
+  };
+}
+
+/**
+ * Update an existing customer review (Self-edit by the customer)
+ */
+export async function updateCustomerReview({
+  id,
+  displayName,
+  rating,
+  comment,
+  menuItemId = null
+}) {
+  if (!id) {
+    return { success: false, error: "ID ulasan tidak valid." };
+  }
+
+  // 1. Validation
+  const cleanName = (displayName || "").trim();
+  const cleanComment = (comment || "").trim();
+  const cleanRating = parseInt(rating, 10);
+
+  if (!cleanName || cleanName.length < 2) {
+    return { success: false, error: "Nama kamu belum diisi dengan benar (minimal 2 huruf)." };
+  }
+  if (cleanName.length > 60) {
+    return { success: false, error: "Nama kamu terlalu panjang (maksimal 60 karakter)." };
+  }
+
+  if (isNaN(cleanRating) || cleanRating < 1 || cleanRating > 5) {
+    return { success: false, error: "Beri rating bintang dari 1 hingga 5." };
+  }
+
+  if (!cleanComment || cleanComment.length < 10) {
+    return { success: false, error: "Tulis pengalaman kamu minimal 10 karakter." };
+  }
+  if (cleanComment.length > 1000) {
+    return { success: false, error: "Ulasan maksimal 1.000 karakter." };
+  }
+
+  // Resolve optional menu item name
+  let cleanMenuItemId = null;
+  let cleanMenuItemName = null;
+  if (menuItemId && menuItemId.trim()) {
+    const foundProduct = PRODUCTS.find(p => p.id === menuItemId.trim());
+    if (foundProduct) {
+      cleanMenuItemId = foundProduct.id;
+      cleanMenuItemName = foundProduct.name;
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+
+  // 2. Update local persistence buffer
+  try {
+    const localList = getLocalReviews();
+    const idx = localList.findIndex(r => r.id === id);
+    if (idx !== -1) {
+      localList[idx] = {
+        ...localList[idx],
+        display_name: cleanName,
+        rating: cleanRating,
+        comment: cleanComment,
+        menu_item_id: cleanMenuItemId,
+        menu_item_name: cleanMenuItemName,
+        updated_at: nowIso
+      };
+      saveLocalReviews(localList);
+    }
+  } catch (err) {
+    console.warn("Gagal update ulasan di local buffer:", err);
+  }
+
+  // 3. Update in Supabase if connected
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from("customer_reviews")
+        .update({
+          display_name: cleanName,
+          rating: cleanRating,
+          comment: cleanComment,
+          menu_item_id: cleanMenuItemId,
+          menu_item_name: cleanMenuItemName,
+          updated_at: nowIso
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.warn("[Reviews] Supabase update warning:", error);
+      }
+    } catch (err) {
+      console.warn("[Reviews] Supabase network error on update:", err);
+    }
+  }
+
+  return {
+    success: true,
+    message: "Ulasan berhasil diperbarui!"
   };
 }
 
@@ -647,7 +768,8 @@ function renderReviewCards(reviews) {
   reviews.forEach((review, index) => {
     const isMine = myReviewIds.includes(review.id);
     const card = document.createElement("article");
-    card.className = "review-card reveal-on-scroll";
+    // Ensure card is immediately visible with revealed class
+    card.className = "review-card revealed";
     if (isMine) card.classList.add("review-card-mine");
     if (index % 3 === 1) card.classList.add("delay-1");
     if (index % 3 === 2) card.classList.add("delay-2");
@@ -718,15 +840,33 @@ function renderReviewCards(reviews) {
     authorWrap.appendChild(avatar);
     authorWrap.appendChild(authorInfo);
 
-    // If authored by this user/browser, provide a direct delete button
+    // If authored by this user/browser, provide Edit and Delete buttons!
     if (isMine) {
+      const actionsGroup = document.createElement("div");
+      actionsGroup.className = "review-actions-group";
+
+      // 1. Edit Button
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "btn-edit-my-review";
+      editBtn.setAttribute("aria-label", "Edit ulasan saya");
+      editBtn.title = "Edit ulasan ini (perbaiki kata atau rating)";
+      editBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <span>Edit</span>
+      `;
+      editBtn.addEventListener("click", () => {
+        openReviewModalForEdit(review);
+      });
+
+      // 2. Delete Button
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "btn-delete-my-review";
       deleteBtn.setAttribute("aria-label", "Hapus ulasan saya");
       deleteBtn.title = "Hapus ulasan ini (misal jika ada kesalahan kata)";
       deleteBtn.innerHTML = `
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
         <span>Hapus</span>
       `;
 
@@ -748,7 +888,9 @@ function renderReviewCards(reviews) {
         }
       });
 
-      authorWrap.appendChild(deleteBtn);
+      actionsGroup.appendChild(editBtn);
+      actionsGroup.appendChild(deleteBtn);
+      authorWrap.appendChild(actionsGroup);
     }
 
     // Assemble Card
@@ -850,12 +992,16 @@ function initStarRatingSelector() {
 }
 
 // =============================================================================
-// REVIEW SUBMISSION MODAL LIFECYCLE
+// REVIEW SUBMISSION & EDIT MODAL LIFECYCLE
 // =============================================================================
 
 export function openReviewModal({ prefillName = "", prefillMenuItemId = "" } = {}) {
   const modal = document.getElementById("reviewModal");
   const overlay = document.getElementById("reviewModalOverlay");
+  const modalTitle = document.getElementById("reviewModalTitle");
+  const modalSubtitle = document.getElementById("reviewModalSubtitle");
+  const btnSubmitText = document.getElementById("btnSubmitReviewText");
+  const editingIdInput = document.getElementById("editingReviewId");
   const nameInput = document.getElementById("reviewAuthorName");
   const menuSelect = document.getElementById("reviewMenuItem");
   const formAlert = document.getElementById("reviewFormAlert");
@@ -871,6 +1017,12 @@ export function openReviewModal({ prefillName = "", prefillMenuItemId = "" } = {
   }
   if (successState) successState.style.display = "none";
   if (formElement) formElement.style.display = "block";
+
+  // Reset edit mode indicators
+  if (editingIdInput) editingIdInput.value = "";
+  if (modalTitle) modalTitle.textContent = "Tulis Ulasan Kamu";
+  if (modalSubtitle) modalSubtitle.textContent = "Bagikan pengalamanmu menikmati Siomay Online";
+  if (btnSubmitText) btnSubmitText.textContent = "Kirim Ulasan";
 
   if (prefillName && nameInput && !nameInput.value) {
     nameInput.value = prefillName;
@@ -893,6 +1045,87 @@ export function openReviewModal({ prefillName = "", prefillMenuItemId = "" } = {
       }
     }, 150);
   }
+}
+
+/**
+ * Open Review Modal in EDIT mode prefilled with customer's review data
+ */
+export function openReviewModalForEdit(review) {
+  if (!review) return;
+
+  const modal = document.getElementById("reviewModal");
+  const overlay = document.getElementById("reviewModalOverlay");
+  const modalTitle = document.getElementById("reviewModalTitle");
+  const modalSubtitle = document.getElementById("reviewModalSubtitle");
+  const btnSubmitText = document.getElementById("btnSubmitReviewText");
+  const editingIdInput = document.getElementById("editingReviewId");
+  const nameInput = document.getElementById("reviewAuthorName");
+  const commentInput = document.getElementById("reviewComment");
+  const menuSelect = document.getElementById("reviewMenuItem");
+  const charCounter = document.getElementById("reviewCharCounter");
+  const formAlert = document.getElementById("reviewFormAlert");
+  const successState = document.getElementById("reviewSuccessState");
+  const formElement = document.getElementById("reviewForm");
+  const ratingInput = document.getElementById("reviewRatingInput");
+
+  if (!modal) return;
+
+  // Reset alert & states
+  if (formAlert) {
+    formAlert.style.display = "none";
+    formAlert.textContent = "";
+  }
+  if (successState) successState.style.display = "none";
+  if (formElement) formElement.style.display = "block";
+
+  // Set edit mode indicators
+  if (editingIdInput) editingIdInput.value = review.id;
+  if (modalTitle) modalTitle.textContent = "Edit Ulasan Kamu";
+  if (modalSubtitle) modalSubtitle.textContent = "Perbarui ulasan atau perbaiki kata yang salah";
+  if (btnSubmitText) btnSubmitText.textContent = "Simpan Perubahan";
+
+  // Prefill values
+  if (nameInput) nameInput.value = review.display_name || "";
+  if (commentInput) {
+    commentInput.value = review.comment || "";
+    if (charCounter) {
+      charCounter.textContent = `${review.comment ? review.comment.length : 0}/1000 karakter`;
+      charCounter.classList.remove("counter-warning");
+    }
+  }
+  if (menuSelect) {
+    menuSelect.value = review.menu_item_id || "";
+  }
+
+  // Set star rating
+  const targetRating = review.rating || 5;
+  currentSelectedRating = targetRating;
+  if (ratingInput) ratingInput.value = targetRating;
+
+  const starButtons = document.querySelectorAll(".star-picker-btn");
+  starButtons.forEach(btn => {
+    const val = parseInt(btn.getAttribute("data-star-val"), 10);
+    if (val <= targetRating) {
+      btn.classList.add("active");
+      btn.setAttribute("aria-checked", "true");
+    } else {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-checked", "false");
+    }
+  });
+
+  const labelEl = document.getElementById("starRatingLabel");
+  if (labelEl) {
+    labelEl.textContent = RATING_LABELS[targetRating] || `${targetRating} Bintang`;
+  }
+
+  modal.classList.add("open");
+  if (overlay) overlay.classList.add("open");
+  document.body.style.overflow = "hidden";
+
+  setTimeout(() => {
+    if (commentInput) commentInput.focus();
+  }, 150);
 }
 
 export function closeReviewModal() {
@@ -980,6 +1213,8 @@ async function handleReviewFormSubmit() {
   const alertEl = document.getElementById("reviewFormAlert");
   const successState = document.getElementById("reviewSuccessState");
   const formElement = document.getElementById("reviewForm");
+  const editingIdInput = document.getElementById("editingReviewId");
+  const editingReviewId = editingIdInput ? editingIdInput.value.trim() : "";
 
   const displayName = nameInput ? nameInput.value : "";
   const rating = ratingInput ? ratingInput.value : currentSelectedRating;
@@ -1012,25 +1247,38 @@ async function handleReviewFormSubmit() {
     submitBtn.classList.add("btn-loading");
     submitBtn.innerHTML = `
       <span class="btn-spinner" aria-hidden="true"></span>
-      <span>Mengirim Ulasan...</span>
+      <span>${editingReviewId ? "Menyimpan Perubahan..." : "Mengirim Ulasan..."}</span>
     `;
   }
 
   hideReviewAlert();
 
-  const res = await submitCustomerReview({
-    displayName,
-    rating,
-    comment,
-    menuItemId,
-    honeypot
-  });
+  let res;
+  if (editingReviewId) {
+    // Mode EDIT
+    res = await updateCustomerReview({
+      id: editingReviewId,
+      displayName,
+      rating,
+      comment,
+      menuItemId
+    });
+  } else {
+    // Mode CREATE
+    res = await submitCustomerReview({
+      displayName,
+      rating,
+      comment,
+      menuItemId,
+      honeypot
+    });
+  }
 
   // Reset button state
   if (submitBtn) {
     submitBtn.disabled = false;
     submitBtn.classList.remove("btn-loading");
-    submitBtn.innerHTML = `<span>Kirim Ulasan</span>`;
+    submitBtn.innerHTML = `<span id="btnSubmitReviewText">${editingReviewId ? "Simpan Perubahan" : "Kirim Ulasan"}</span>`;
   }
 
   if (!res.success) {
@@ -1038,7 +1286,16 @@ async function handleReviewFormSubmit() {
     return;
   }
 
-  // Success: Clear form fields
+  // If in edit mode, close modal directly and show toast!
+  if (editingReviewId) {
+    if (editingIdInput) editingIdInput.value = "";
+    closeReviewModal();
+    showPublicReviewToast("Ulasan kamu berhasil diperbarui!");
+    await loadApprovedReviews(1, false);
+    return;
+  }
+
+  // Success for CREATE: Clear form fields
   if (nameInput) nameInput.value = "";
   if (commentInput) commentInput.value = "";
   if (menuSelect) menuSelect.value = "";
@@ -1062,7 +1319,7 @@ async function handleReviewFormSubmit() {
     successState.style.display = "block";
     const msgEl = document.getElementById("reviewSuccessMessage");
     if (msgEl) {
-      msgEl.textContent = "Ulasanmu berhasil dikirim dan langsung tampil di halaman ini! Kamu juga dapat menghapusnya jika ada kesalahan kata.";
+      msgEl.textContent = "Ulasanmu berhasil dikirim dan langsung tampil di halaman ini! Kamu juga dapat mengedit atau menghapusnya jika ada kesalahan kata.";
     }
   }
 

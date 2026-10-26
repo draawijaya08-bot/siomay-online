@@ -47,6 +47,20 @@ CREATE POLICY "Public can insert reviews"
     char_length(comment) <= 1000
   );
 
+-- Allow customers to edit/update their reviews directly
+CREATE POLICY "Public can update reviews"
+  ON public.customer_reviews
+  FOR UPDATE
+  TO public
+  USING (true)
+  WITH CHECK (
+    char_length(trim(display_name)) >= 2 AND
+    char_length(display_name) <= 100 AND
+    rating >= 1 AND rating <= 5 AND
+    char_length(trim(comment)) >= 10 AND
+    char_length(comment) <= 1000
+  );
+
 -- Allow customers to delete reviews (e.g. if they made a typo)
 CREATE POLICY "Public can delete reviews"
   ON public.customer_reviews

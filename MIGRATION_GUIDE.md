@@ -16,7 +16,7 @@ Admin CMS Siomay Online dirancang sebagai panel manajemen terpadu yang aman, mod
   2. **Food Menu Management (CRUD)**: Tambah menu baru, edit nama/harga/porsi/deskripsi, toggle ketersediaan (tersedia/habis), highlight best seller, dan upload foto makanan.
   3. **Banner & Konten Promosi**: Ubah headline hero banner, subheadline, teks CTA, unggah foto hero banner baru, serta sematkan video promosi (MP4/WebM).
   4. **Pengaturan WhatsApp & Pesanan**: Ubah nomor WhatsApp resmi toko dengan normalisasi otomatis dan pratinjau link pemesanan dinamis.
-  5. **Ulasan Pelanggan Langsung**: Ulasan yang dibuat pelanggan di website utama langsung tampil secara instan tanpa perlu konfirmasi admin, dan pelanggan dapat menghapus ulasan mereka sendiri secara mandiri jika ada salah kata.
+  5. **Ulasan Pelanggan Langsung & Mandiri**: Ulasan yang dibuat pelanggan di website utama langsung tampil secara instan tanpa perlu konfirmasi admin, dan pelanggan dapat mengedit atau menghapus ulasan mereka sendiri secara mandiri jika ada salah kata atau ingin memperbarui penilaian.
 
 ---
 

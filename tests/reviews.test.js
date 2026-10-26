@@ -11,6 +11,7 @@ import {
   escapeHtml, 
   renderStarsHtml, 
   submitCustomerReview, 
+  updateCustomerReview,
   fetchApprovedReviews,
   deleteCustomerReview,
   isMyReview
@@ -175,7 +176,17 @@ console.log("\nTest 7: Direct Customer Review Publishing & Customer Self-Deletio
   // 2. Customer ownership tracking
   assert.equal(isMyReview(resValid.review.id), true, "Customer can identify their own created review");
 
-  // 3. Customer self-deletion (e.g. if typo/salah kata)
+  // 3. Customer self-edit (update review if typo / change rating)
+  const resUpdate = await updateCustomerReview({
+    id: resValid.review.id,
+    displayName: "Caca Updated",
+    rating: 5,
+    comment: "Siomay kentangnya sangat lembut, empuk, dan bumbu kacangnya benar-benar mantap!",
+    menuItemId: "siomay-komplit"
+  });
+  assert.equal(resUpdate.success, true, "Customer can update their own review");
+
+  // 4. Customer self-deletion (e.g. if typo/salah kata)
   const resDelete = await deleteCustomerReview(resValid.review.id);
   assert.equal(resDelete.success, true, "Customer can delete their own review");
   assert.equal(isMyReview(resValid.review.id), false, "Deleted review is no longer in customer's review list");
