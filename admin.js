@@ -342,7 +342,12 @@ function updateOverviewMetrics() {
 
   if (metricMenu) metricMenu.textContent = menuItems.length;
   if (metricWa && siteSettings) {
-    metricWa.textContent = siteSettings.whatsapp_number || "628XXXXXXXXXX";
+    const rawWa = (siteSettings.whatsapp_number || "").replace(/[^0-9]/g, "");
+    if (rawWa && rawWa.length >= 10) {
+      metricWa.textContent = rawWa.startsWith("62") ? "+" + rawWa : rawWa;
+    } else {
+      metricWa.textContent = "+62 812-3456-7890";
+    }
   }
   if (metricOperational && siteSettings) {
     const area = siteSettings.delivery_area ? ` (${siteSettings.delivery_area})` : "";
@@ -1955,68 +1960,53 @@ function escapeSafe(str) {
 }
 
 // =============================================================================
-// 10. CUSTOMER ORDERS MANAGEMENT (ORDER INBOX)
+// 10. CUSTOMER ORDERS MANAGEMENT (ORDER INBOX) WITH 24-HOUR AUTO-RESET
 // =============================================================================
-const DEFAULT_SAMPLE_ORDERS = [
-  {
-    id: "ORD-948201",
-    created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-    customer: {
-      name: "Budi Santoso",
-      phone: "6281288991122",
-      address: "Jl. Dago Asri No. 12, Bandung (Dekat Alfamart)",
-      note: "Bumbu kacangnya dipisah ya, banyakin sambalnya."
-    },
-    items: [
-      { id: "siomay-komplit", name: "Siomay Komplit", price: 25000, quantity: 2, subtotal: 50000, portion: "Paling Lengkap" },
-      { id: "batagor", name: "Batagor", price: 15000, quantity: 1, subtotal: 15000, portion: "Crispy & Gurih" }
-    ],
-    total: 65000,
-    itemCount: 3,
-    status: "baru"
-  },
-  {
-    id: "ORD-948180",
-    created_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(),
-    customer: {
-      name: "Siti Rahma",
-      phone: "6285712345678",
-      address: "Komplek Graha Indah Blok C3 No. 5",
-      note: "Kecap manis sedikit saja."
-    },
-    items: [
-      { id: "paket-hemat", name: "Paket Hemat", price: 35000, quantity: 1, subtotal: 35000, portion: "Porsi Kenyang" }
-    ],
-    total: 35000,
-    itemCount: 1,
-    status: "diproses"
-  },
-  {
-    id: "ORD-947990",
-    created_at: new Date(Date.now() - 240 * 60 * 1000).toISOString(),
-    customer: {
-      name: "Agus Pratama",
-      phone: "6281399887766",
-      address: "Kantor BCA Dago Lt. 2",
-      note: "Titip di satpam kalau belum turun."
-    },
-    items: [
-      { id: "siomay-original", name: "Siomay Original", price: 15000, quantity: 4, subtotal: 60000, portion: "Porsi Mantap" }
-    ],
-    total: 60000,
-    itemCount: 4,
-    status: "selesai"
-  }
-];
+const DEFAULT_SAMPLE_ORDERS = [];
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Filter out orders older than 24 hours (1x24 jam reset) & discard sample dummies
+ */
+function pruneExpiredOrders(orders) {
+  if (!Array.isArray(orders)) return [];
+  const now = Date.now();
+  return orders.filter(order => {
+    if (!order || !order.created_at) return false;
+    // Discard any old sample dummy orders
+    if (order.id === "ORD-948201" || order.id === "ORD-948180" || order.id === "ORD-947990") return false;
+    const orderTime = new Date(order.created_at).getTime();
+    if (isNaN(orderTime)) return false;
+    // Strict 24-hour retention window
+    return (now - orderTime) < TWENTY_FOUR_HOURS_MS;
+  });
+}
 
 function initOrdersHandlers() {
   const btnRefresh = document.getElementById("btnRefreshOrders");
+  const btnResetNow = document.getElementById("btnResetOrdersNow");
   const filterTabs = document.querySelectorAll("[data-order-filter]");
 
   if (btnRefresh) {
     btnRefresh.addEventListener("click", () => {
       loadCustomerOrders();
       showToast("Daftar pesanan berhasil disegarkan.", "info");
+    });
+  }
+
+  // Manual Reset Button: Reset all orders to 0
+  if (btnResetNow) {
+    btnResetNow.addEventListener("click", () => {
+      if (confirm("Apakah Anda yakin ingin mereset semua pesanan masuk menjadi 0 (nol)?")) {
+        allOrders = [];
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("siomay_customer_orders", JSON.stringify([]));
+          localStorage.setItem("siomay_last_order_reset", String(Date.now()));
+        }
+        renderCustomerOrders();
+        updateOverviewMetrics();
+        showToast("Semua pesanan masuk berhasil direset menjadi 0.", "success");
+      }
     });
   }
 
@@ -2042,6 +2032,19 @@ function initOrdersHandlers() {
       updateOverviewMetrics();
     }
   });
+
+  // Background 24-Hour Auto-Reset Timer (runs every 60s while dashboard is open)
+  setInterval(() => {
+    const prevCount = allOrders.length;
+    allOrders = pruneExpiredOrders(allOrders);
+    if (allOrders.length !== prevCount) {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
+      }
+      renderCustomerOrders();
+      updateOverviewMetrics();
+    }
+  }, 60000);
 }
 
 async function loadCustomerOrders() {
@@ -2050,20 +2053,28 @@ async function loadCustomerOrders() {
 
   try {
     const res = await fetchCustomerOrders();
+    let rawOrders = [];
     if (res.success && Array.isArray(res.orders) && res.orders.length > 0) {
-      allOrders = res.orders;
+      rawOrders = res.orders;
     } else {
       const raw = localStorage.getItem("siomay_customer_orders");
-      if (!raw) {
-        allOrders = [...DEFAULT_SAMPLE_ORDERS];
-        localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
-      } else {
-        allOrders = JSON.parse(raw);
+      if (raw) {
+        try {
+          rawOrders = JSON.parse(raw);
+        } catch {
+          rawOrders = [];
+        }
       }
+    }
+
+    // Auto-Reset: Prune all orders older than 24 hours & discard sample dummies
+    allOrders = pruneExpiredOrders(rawOrders);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
     }
   } catch (err) {
     console.warn("Gagal membaca riwayat pesanan:", err);
-    allOrders = [...DEFAULT_SAMPLE_ORDERS];
+    allOrders = [];
   }
 
   if (loading) loading.style.display = "none";
