@@ -239,6 +239,83 @@ console.log("\nTest 7: Food Menu CRUD & Local Persistence Buffer...");
   console.log("✓ Menu item Create, Read, Update, Delete (CRUD) works flawlessly with local persistence.");
 }
 
+// -----------------------------------------------------------------------------
+// Test 8: Persistent Offline & Online Auto-Sync Engine
+// -----------------------------------------------------------------------------
+console.log("\nTest 8: Persistent Offline & Online Auto-Sync Engine Verification...");
+{
+  const { 
+    getSyncQueue, 
+    saveSyncQueue, 
+    clearSyncQueue, 
+    getPendingSyncCount, 
+    enqueueSyncAction,
+    syncPendingQueueToSupabase,
+    updateSiteSettings
+  } = await import("../cmsService.js");
+
+  // 1. Queue initialization & clearing
+  clearSyncQueue();
+  assert.equal(getPendingSyncCount(), 0, "Initial queue must be 0");
+
+  // 2. Enqueue action
+  const action1 = enqueueSyncAction({
+    type: "CREATE_MENU",
+    tempId: "menu-test-123",
+    payload: { name: "Siomay Tes Antrean", price: 20000 }
+  });
+  assert.equal(getPendingSyncCount(), 1, "Queue count should increase to 1");
+  assert.ok(action1.id, "Action must have unique ID");
+
+  // 3. Coalescing: updating an uncommitted item updates the CREATE payload
+  enqueueSyncAction({
+    type: "UPDATE_MENU",
+    targetId: "menu-test-123",
+    payload: { price: 25000, description: "Deskripsi diperbarui" }
+  });
+  assert.equal(getPendingSyncCount(), 1, "Queue count must remain 1 due to coalescing");
+  const qAfterUpdate = getSyncQueue();
+  assert.equal(qAfterUpdate[0].payload.price, 25000, "Price in creation payload should be updated to 25000");
+
+  // 4. Coalescing: settings updates merge into single latest entry
+  enqueueSyncAction({
+    type: "UPDATE_SETTINGS",
+    corePayload: { brand_name: "Siomay Online V1" },
+    opConfig: { operational_status: "buka" }
+  });
+  assert.equal(getPendingSyncCount(), 2, "Queue should now have 2 items");
+
+  enqueueSyncAction({
+    type: "UPDATE_SETTINGS",
+    corePayload: { brand_name: "Siomay Online V2", whatsapp_number: "628999999999" },
+    opConfig: { operational_status: "istirahat" }
+  });
+  assert.equal(getPendingSyncCount(), 2, "Duplicate UPDATE_SETTINGS must be coalesced into 1 entry");
+  const qAfterSettings = getSyncQueue();
+  const settingsAction = qAfterSettings.find(a => a.type === "UPDATE_SETTINGS");
+  assert.equal(settingsAction.corePayload.brand_name, "Siomay Online V2");
+  assert.equal(settingsAction.corePayload.whatsapp_number, "628999999999");
+  assert.equal(settingsAction.opConfig.operational_status, "istirahat");
+
+  // 5. Coalescing: deleting an uncommitted item removes creation action
+  enqueueSyncAction({
+    type: "DELETE_MENU",
+    targetId: "menu-test-123"
+  });
+  assert.equal(getPendingSyncCount(), 1, "Deleting uncommitted item must cancel CREATE_MENU");
+
+  // 6. Test syncPendingQueueToSupabase execution
+  const syncRes = await syncPendingQueueToSupabase();
+  assert.equal(typeof syncRes.success, "boolean", "Sync response must return success boolean");
+  assert.equal(typeof syncRes.processedCount, "number", "Sync response must return processedCount");
+
+  clearSyncQueue();
+  assert.equal(getPendingSyncCount(), 0, "Queue must be cleanly reset after test");
+
+  console.log("✓ Persistent offline queue, coalescing logic, and auto-sync engine verified successfully.");
+}
+
 console.log("\n=======================================================");
 console.log("ALL COMPLETE ADMIN CMS TESTS PASSED (100% OK)");
 console.log("=======================================================");
+

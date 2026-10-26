@@ -220,7 +220,321 @@ export async function verifyIsOwner(userId) {
 }
 
 // =============================================================================
-// 2. FOOD MENU ITEMS (CRUD with Offline Buffer Resilience)
+// OFFLINE & ONLINE AUTO-SYNC ENGINE (SUPABASE PERSISTENT QUEUE)
+// =============================================================================
+
+const SYNC_QUEUE_KEY = "siomay_pending_sync_queue";
+let inMemorySyncQueue = [];
+
+/**
+ * Retrieve current pending sync queue from localStorage (or in-memory)
+ */
+export function getSyncQueue() {
+  if (typeof localStorage === "undefined") {
+    return [...inMemorySyncQueue];
+  }
+  try {
+    const raw = localStorage.getItem(SYNC_QUEUE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Save pending sync queue to localStorage
+ */
+export function saveSyncQueue(queue) {
+  const safe = Array.isArray(queue) ? queue : [];
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(safe));
+    } catch (e) {
+      console.warn("[CMS Sync Queue] Gagal menyimpan antrean ke localStorage:", e);
+    }
+  } else {
+    inMemorySyncQueue = [...safe];
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent("siomay_sync_queue_updated", { 
+        detail: { queue: safe, count: safe.length } 
+      }));
+    } catch {}
+  }
+}
+
+/**
+ * Clear the entire pending queue
+ */
+export function clearSyncQueue() {
+  saveSyncQueue([]);
+}
+
+/**
+ * Get count of pending actions waiting to be synced to Supabase
+ */
+export function getPendingSyncCount() {
+  return getSyncQueue().length;
+}
+
+/**
+ * Add a pending sync action with intelligent deduplication/coalescing
+ */
+export function enqueueSyncAction(action) {
+  const queue = getSyncQueue();
+  const entry = {
+    id: "sync-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 7),
+    timestamp: Date.now(),
+    retryCount: 0,
+    ...action
+  };
+
+  let nextQueue = [...queue];
+
+  // 1. Deduplicate / Coalesce UPDATE_SETTINGS
+  if (entry.type === "UPDATE_SETTINGS") {
+    const existingIdx = nextQueue.findIndex(a => a.type === "UPDATE_SETTINGS");
+    if (existingIdx !== -1) {
+      const existing = nextQueue[existingIdx];
+      entry.corePayload = { ...(existing.corePayload || {}), ...(entry.corePayload || {}) };
+      entry.opConfig = { ...(existing.opConfig || {}), ...(entry.opConfig || {}) };
+      entry.fullSettings = { ...(existing.fullSettings || {}), ...(entry.fullSettings || {}) };
+      nextQueue.splice(existingIdx, 1);
+    }
+  }
+
+  // 2. Coalesce UPDATE_MENU if item was created offline in the same session
+  if (entry.type === "UPDATE_MENU" && entry.targetId) {
+    const createIdx = nextQueue.findIndex(a => a.type === "CREATE_MENU" && a.tempId === entry.targetId);
+    if (createIdx !== -1) {
+      nextQueue[createIdx].payload = { ...nextQueue[createIdx].payload, ...entry.payload };
+      saveSyncQueue(nextQueue);
+      return nextQueue[createIdx];
+    }
+    const updateIdx = nextQueue.findIndex(a => a.type === "UPDATE_MENU" && a.targetId === entry.targetId);
+    if (updateIdx !== -1) {
+      entry.payload = { ...nextQueue[updateIdx].payload, ...entry.payload };
+      nextQueue.splice(updateIdx, 1);
+    }
+  }
+
+  // 3. Remove CREATE_MENU if deleted before ever reaching Supabase
+  if (entry.type === "DELETE_MENU" && entry.targetId) {
+    const createIdx = nextQueue.findIndex(a => a.type === "CREATE_MENU" && a.tempId === entry.targetId);
+    if (createIdx !== -1) {
+      nextQueue.splice(createIdx, 1);
+      saveSyncQueue(nextQueue);
+      return entry;
+    }
+    nextQueue = nextQueue.filter(a => !(a.type === "UPDATE_MENU" && a.targetId === entry.targetId));
+  }
+
+  nextQueue.push(entry);
+  saveSyncQueue(nextQueue);
+  return entry;
+}
+
+/**
+ * Execute direct site settings upsert to Supabase
+ */
+export async function executeSupabaseSettingsUpsert(corePayload, opConfig) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: false, error: "Supabase belum terkonfigurasi." };
+  }
+  try {
+    const { data, error } = await supabase
+      .from("site_settings")
+      .upsert(corePayload)
+      .select()
+      .single();
+
+    if (!error && data) {
+      if (opConfig) Object.assign(data, opConfig);
+      saveLocalSiteSettings(data);
+      return { success: true, settings: data, isLive: true };
+    }
+    return { success: false, error: error?.message || "Gagal menyimpan ke Supabase." };
+  } catch (err) {
+    return { success: false, error: err?.message || err };
+  }
+}
+
+let isSyncingPendingQueue = false;
+
+/**
+ * Auto-syncs all offline changes up to Supabase Cloud Database.
+ * Runs automatically when reconnecting (offline -> online), on window focus,
+ * or on periodic intervals.
+ */
+export async function syncPendingQueueToSupabase() {
+  if (isSyncingPendingQueue) {
+    return { success: true, isAlreadyRunning: true, count: getPendingSyncCount() };
+  }
+
+  const queue = getSyncQueue();
+  if (!queue || queue.length === 0) {
+    return { success: true, processedCount: 0, remainingCount: 0 };
+  }
+
+  // If browser is offline, abort gracefully
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return { success: false, reason: "offline", count: queue.length };
+  }
+
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: false, reason: "unconfigured", count: queue.length };
+  }
+
+  // Quick check if Supabase is actually reachable
+  const isAlive = await testSupabaseMenuWriteAccess();
+  if (!isAlive) {
+    return { success: false, reason: "unreachable", count: queue.length };
+  }
+
+  isSyncingPendingQueue = true;
+  let processedCount = 0;
+  const remainingQueue = [];
+  const tempIdMap = new Map();
+
+  try {
+    for (const item of queue) {
+      try {
+        if (item.type === "CREATE_MENU") {
+          const payload = { ...item.payload };
+          delete payload.id;
+
+          const { data, error } = await supabase
+            .from("menu_items")
+            .insert([payload])
+            .select()
+            .single();
+
+          if (!error && data) {
+            processedCount++;
+            if (item.tempId && data.id) {
+              tempIdMap.set(item.tempId, data.id);
+              const localItems = getLocalMenuItems();
+              const updatedLocal = localItems.map(l => {
+                if (l.id === item.tempId || l.slug === item.tempId) {
+                  return { ...l, id: data.id, _isLocalModified: false };
+                }
+                return l;
+              });
+              saveLocalMenuItems(updatedLocal, { emitEvent: false });
+            }
+          } else {
+            console.warn("[Auto-Sync] CREATE_MENU error:", error);
+            item.retryCount = (item.retryCount || 0) + 1;
+            remainingQueue.push(item);
+          }
+        } else if (item.type === "UPDATE_MENU") {
+          const targetId = tempIdMap.get(item.targetId) || item.targetId;
+          const isTemp = String(targetId).startsWith("menu-");
+
+          if (isTemp) {
+            const payload = { ...item.payload };
+            delete payload.id;
+            const { data, error } = await supabase
+              .from("menu_items")
+              .insert([payload])
+              .select()
+              .single();
+
+            if (!error && data) {
+              processedCount++;
+              tempIdMap.set(targetId, data.id);
+              const localItems = getLocalMenuItems();
+              const updatedLocal = localItems.map(l => l.id === targetId ? { ...l, id: data.id, _isLocalModified: false } : l);
+              saveLocalMenuItems(updatedLocal, { emitEvent: false });
+            } else {
+              item.retryCount = (item.retryCount || 0) + 1;
+              remainingQueue.push(item);
+            }
+          } else {
+            const { error } = await supabase
+              .from("menu_items")
+              .update(item.payload)
+              .eq("id", targetId);
+
+            if (!error) {
+              processedCount++;
+              const localItems = getLocalMenuItems();
+              const updatedLocal = localItems.map(l => l.id === targetId ? { ...l, _isLocalModified: false } : l);
+              saveLocalMenuItems(updatedLocal, { emitEvent: false });
+            } else {
+              console.warn("[Auto-Sync] UPDATE_MENU error:", error);
+              item.retryCount = (item.retryCount || 0) + 1;
+              remainingQueue.push(item);
+            }
+          }
+        } else if (item.type === "DELETE_MENU") {
+          const targetId = tempIdMap.get(item.targetId) || item.targetId;
+          if (!String(targetId).startsWith("menu-")) {
+            await supabase.from("menu_items").delete().eq("id", targetId);
+          }
+          processedCount++;
+        } else if (item.type === "BATCH_DELETE_MENU") {
+          const rawIds = item.ids || [];
+          const realIds = rawIds.map(id => tempIdMap.get(id) || id).filter(id => !String(id).startsWith("menu-"));
+          if (realIds.length > 0) {
+            await supabase.from("menu_items").delete().in("id", realIds);
+          }
+          processedCount++;
+        } else if (item.type === "UPDATE_SETTINGS") {
+          const res = await executeSupabaseSettingsUpsert(item.corePayload, item.opConfig);
+          if (res.success) {
+            processedCount++;
+          } else {
+            console.warn("[Auto-Sync] UPDATE_SETTINGS error:", res.error);
+            item.retryCount = (item.retryCount || 0) + 1;
+            remainingQueue.push(item);
+          }
+        } else if (item.type === "UPDATE_ORDER_STATUS") {
+          await supabase
+            .from("customer_orders")
+            .update({ status: item.status, updated_at: new Date().toISOString() })
+            .eq("id", item.orderId);
+          processedCount++;
+        } else if (item.type === "DELETE_ORDER") {
+          await supabase
+            .from("customer_orders")
+            .delete()
+            .eq("id", item.orderId);
+          processedCount++;
+        }
+      } catch (err) {
+        console.warn("[Auto-Sync] Item processing failed:", err);
+        item.retryCount = (item.retryCount || 0) + 1;
+        remainingQueue.push(item);
+      }
+    }
+
+    saveSyncQueue(remainingQueue);
+
+    if (processedCount > 0 && typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new CustomEvent("siomay_sync_completed", { 
+          detail: { processedCount, remainingCount: remainingQueue.length } 
+        }));
+      } catch {}
+    }
+
+    return {
+      success: true,
+      processedCount,
+      remainingCount: remainingQueue.length
+    };
+  } finally {
+    isSyncingPendingQueue = false;
+  }
+}
+
+// =============================================================================
+// 2. FOOD MENU ITEMS (CRUD with Offline Buffer Resilience & Auto-Sync)
 // =============================================================================
 
 export const DEFAULT_MENU_ITEMS = [
@@ -507,6 +821,10 @@ export async function createMenuItem(itemData) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+    enqueueSyncAction({ type: "CREATE_MENU", tempId: createdItem.id, payload });
+  } else {
+    // If online direct insert succeeded, attempt background sync of any previously queued actions
+    syncPendingQueueToSupabase().catch(() => {});
   }
 
   // Remove from deleted list if re-added
@@ -524,7 +842,8 @@ export async function createMenuItem(itemData) {
     success: true, 
     item: createdItem, 
     isLive: isSupabaseSuccess, 
-    isLocal: !isSupabaseSuccess 
+    isLocal: !isSupabaseSuccess,
+    queued: !isSupabaseSuccess
   };
 }
 
@@ -567,10 +886,16 @@ export async function updateMenuItem(id, itemData) {
       if (!error && data) {
         updatedFromSb = data;
         isSupabaseSuccess = true;
+        // Background drain of any prior queue
+        syncPendingQueueToSupabase().catch(() => {});
       }
     } catch (err) {
-      console.warn("[CMS Menu] Supabase update gagal, beralih ke buffer lokal:", err);
+      console.warn("[CMS Menu] Supabase update gagal, beralih ke buffer lokal & antrean:", err);
     }
+  }
+
+  if (!isSupabaseSuccess) {
+    enqueueSyncAction({ type: "UPDATE_MENU", targetId: id, payload });
   }
 
   // Update in local buffer
@@ -600,7 +925,8 @@ export async function updateMenuItem(id, itemData) {
     success: true, 
     item: updatedItem, 
     isLive: isSupabaseSuccess, 
-    isLocal: !isSupabaseSuccess 
+    isLocal: !isSupabaseSuccess,
+    queued: !isSupabaseSuccess 
   };
 }
 
@@ -611,16 +937,25 @@ export async function deleteMenuItem(id) {
   if (!id) return { success: false, error: "ID menu tidak ditemukan." };
 
   const isLocalId = String(id).startsWith("menu-");
+  let isSupabaseSuccess = false;
 
   if (isSupabaseConfigured && supabase && !isLocalId) {
     try {
-      await supabase
+      const { error } = await supabase
         .from("menu_items")
         .delete()
         .eq("id", id);
+      if (!error) {
+        isSupabaseSuccess = true;
+        syncPendingQueueToSupabase().catch(() => {});
+      }
     } catch (err) {
-      console.warn("[CMS Menu] Supabase delete gagal, menghapus dari buffer lokal:", err);
+      console.warn("[CMS Menu] Supabase delete gagal, menghapus dari buffer lokal & antrean:", err);
     }
+  }
+
+  if (!isSupabaseSuccess && !isLocalId) {
+    enqueueSyncAction({ type: "DELETE_MENU", targetId: id });
   }
 
   // Add to deleted set so fetchAllMenuItems does not resurrect it
@@ -630,7 +965,7 @@ export async function deleteMenuItem(id) {
 
   const filtered = getLocalMenuItems().filter(item => item.id !== id && item.slug !== id);
   saveLocalMenuItems(filtered);
-  return { success: true };
+  return { success: true, isLive: isSupabaseSuccess, queued: !isSupabaseSuccess && !isLocalId };
 }
 
 /**
@@ -643,16 +978,25 @@ export async function deleteMenuItems(ids) {
 
   const idSetToDelete = new Set(ids.map(String));
   const sbIds = ids.filter(id => !String(id).startsWith("menu-"));
+  let isSupabaseSuccess = false;
 
   if (isSupabaseConfigured && supabase && sbIds.length > 0) {
     try {
-      await supabase
+      const { error } = await supabase
         .from("menu_items")
         .delete()
         .in("id", sbIds);
+      if (!error) {
+        isSupabaseSuccess = true;
+        syncPendingQueueToSupabase().catch(() => {});
+      }
     } catch (err) {
       console.warn("[CMS Menu] Supabase batch delete notice:", err);
     }
+  }
+
+  if (!isSupabaseSuccess && sbIds.length > 0) {
+    enqueueSyncAction({ type: "BATCH_DELETE_MENU", ids: sbIds });
   }
 
   // Add to deleted set so fetchAllMenuItems does not resurrect them
@@ -662,7 +1006,7 @@ export async function deleteMenuItems(ids) {
 
   const filtered = getLocalMenuItems().filter(item => !idSetToDelete.has(String(item.id)) && !idSetToDelete.has(String(item.slug)));
   saveLocalMenuItems(filtered);
-  return { success: true, count: ids.length };
+  return { success: true, count: ids.length, isLive: isSupabaseSuccess, queued: !isSupabaseSuccess && sbIds.length > 0 };
 }
 
 // =============================================================================
@@ -860,19 +1204,29 @@ export async function updateSiteSettings(settingsData) {
       if (!error && data) {
         Object.assign(data, opConfig);
         saveLocalSiteSettings(data);
+        // Background sync of any prior queued items
+        syncPendingQueueToSupabase().catch(() => {});
         return { success: true, settings: data, isLive: true };
       }
 
       if (error) {
-        console.warn("[CMS Settings] Supabase upsert error:", error);
+        console.warn("[CMS Settings] Supabase upsert error, beralih ke buffer lokal & antrean:", error);
       }
     } catch (err) {
-      console.warn("[CMS Settings] Supabase update settings gagal, menyimpan ke buffer lokal:", err);
+      console.warn("[CMS Settings] Supabase update settings gagal, menyimpan ke buffer lokal & antrean:", err);
     }
   }
 
+  // Offline / fallback path: save locally & enqueue for auto-sync
   saveLocalSiteSettings(fullSettingsObject);
-  return { success: true, settings: fullSettingsObject, isLocal: true };
+  enqueueSyncAction({ 
+    type: "UPDATE_SETTINGS", 
+    corePayload, 
+    opConfig, 
+    fullSettings: fullSettingsObject 
+  });
+
+  return { success: true, settings: fullSettingsObject, isLocal: true, queued: true };
 }
 
 // =============================================================================
@@ -1057,6 +1411,7 @@ export async function uploadDataUrlToStorage(dataUrl, folder = "branding", filen
  */
 export async function testSupabaseMenuWriteAccess() {
   if (!isSupabaseConfigured || !supabase) return false;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
   try {
     const { error } = await supabase.from("site_settings").select("id").limit(1);
     return !error;
@@ -1102,31 +1457,51 @@ export async function fetchCustomerOrders() {
 }
 
 export async function updateCustomerOrderStatus(orderId, newStatus) {
+  let isSbSuccess = false;
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase
+      const { error } = await supabase
         .from("customer_orders")
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", orderId);
+      if (!error) {
+        isSbSuccess = true;
+        syncPendingQueueToSupabase().catch(() => {});
+      }
     } catch (err) {
       console.warn("[CMS Orders] Supabase update status notice:", err);
     }
   }
-  return { success: true };
+
+  if (!isSbSuccess) {
+    enqueueSyncAction({ type: "UPDATE_ORDER_STATUS", orderId, status: newStatus });
+  }
+
+  return { success: true, isLive: isSbSuccess };
 }
 
 export async function deleteCustomerOrder(orderId) {
+  let isSbSuccess = false;
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase
+      const { error } = await supabase
         .from("customer_orders")
         .delete()
         .eq("id", orderId);
+      if (!error) {
+        isSbSuccess = true;
+        syncPendingQueueToSupabase().catch(() => {});
+      }
     } catch (err) {
       console.warn("[CMS Orders] Supabase delete order notice:", err);
     }
   }
-  return { success: true };
+
+  if (!isSbSuccess) {
+    enqueueSyncAction({ type: "DELETE_ORDER", orderId });
+  }
+
+  return { success: true, isLive: isSbSuccess };
 }
 
 

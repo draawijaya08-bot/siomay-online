@@ -4004,10 +4004,35 @@ ul, ol {
   gap: 6px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--accent-green);
-  background-color: var(--accent-green-light);
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: var(--radius-full);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.cms-db-status:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.cms-db-status.status-connected {
+  color: #065F46;
+  background-color: var(--accent-green-light);
+  border-color: #A7F3D0;
+}
+
+.cms-db-status.status-offline {
+  color: #B45309;
+  background-color: #FEF3C7;
+  border-color: #FDE68A;
+}
+
+.cms-db-status.status-syncing {
+  color: #1D4ED8;
+  background-color: #EFF6FF;
+  border-color: #BFDBFE;
 }
 
 .status-dot {
@@ -4016,6 +4041,25 @@ ul, ol {
   border-radius: 50%;
   background-color: var(--accent-green);
   animation: pulse 1.8s infinite;
+}
+
+.status-dot.status-offline {
+  background-color: #D97706;
+  animation: none;
+}
+
+.status-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(29, 78, 216, 0.25);
+  border-top-color: #1D4ED8;
+  border-radius: 50%;
+  animation: statusSpin 0.75s linear infinite;
+  display: inline-block;
+}
+
+@keyframes statusSpin {
+  to { transform: rotate(360deg); }
 }
 
 @keyframes pulse {

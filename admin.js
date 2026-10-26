@@ -27,7 +27,10 @@ import {
   fetchCustomerOrders,
   updateCustomerOrderStatus,
   deleteCustomerOrder,
-  uploadDataUrlToStorage
+  uploadDataUrlToStorage,
+  getSyncQueue,
+  getPendingSyncCount,
+  syncPendingQueueToSupabase
 } from "./cmsService.js";
 import { formatReviewDate } from "./reviews.js";
 
@@ -80,6 +83,132 @@ function updateBulkSelectionUi() {
 }
 
 // =============================================================================
+// AUTO-SYNC & CONNECTION ENGINE (OFFLINE & ONLINE)
+// =============================================================================
+let isSyncingQueue = false;
+
+function updateDbStatusBadge(overrideState = null) {
+  const dbStatus = document.getElementById("cmsDbStatusIndicator");
+  if (!dbStatus) return;
+
+  const pendingCount = getPendingSyncCount();
+  const isOnline = typeof navigator !== "undefined" ? navigator.onLine !== false : true;
+
+  if (overrideState === "syncing" || isSyncingQueue) {
+    dbStatus.className = "cms-db-status status-syncing";
+    dbStatus.innerHTML = `<span class="status-spinner"></span> Menyinkronkan ke Supabase...`;
+    dbStatus.title = "Sedang mengirim perubahan ke Supabase Cloud Database...";
+    return;
+  }
+
+  if (!isOnline) {
+    dbStatus.className = "cms-db-status status-offline";
+    if (pendingCount > 0) {
+      dbStatus.innerHTML = `<span class="status-dot status-offline"></span> Mode Offline (${pendingCount} Tertunda)`;
+      dbStatus.title = `${pendingCount} perubahan tersimpan di buffer lokal. Akan otomatis disinkronkan ke Supabase saat koneksi internet kembali online.`;
+    } else {
+      dbStatus.innerHTML = `<span class="status-dot status-offline"></span> Mode Offline (Tersimpan Lokal)`;
+      dbStatus.title = "Koneksi offline. Semua perubahan tetap dapat diedit dan tersimpan aman secara lokal.";
+    }
+    return;
+  }
+
+  if (isSupabaseConfigured && supabase) {
+    if (pendingCount > 0) {
+      dbStatus.className = "cms-db-status status-syncing";
+      dbStatus.innerHTML = `<span class="status-spinner"></span> Menyinkronkan (${pendingCount})...`;
+      dbStatus.title = `Menyinkronkan ${pendingCount} perubahan tertunda ke Supabase...`;
+    } else {
+      dbStatus.className = "cms-db-status status-connected";
+      dbStatus.innerHTML = `<span class="status-dot"></span> Supabase Cloud Aktif <small style="font-size:0.75em;opacity:0.9;">(Auto-Sync)</small>`;
+      dbStatus.title = "Terhubung langsung ke Supabase Cloud. Semua perubahan otomatis tersinkron baik saat online maupun offline. Klik untuk verifikasi sekarang.";
+    }
+  } else {
+    dbStatus.className = "cms-db-status status-offline";
+    dbStatus.innerHTML = `<span class="status-dot status-offline"></span> Mode Buffer Lokal (Offline)`;
+    dbStatus.title = "Supabase belum terkonfigurasi. Data tersimpan di buffer lokal.";
+  }
+}
+
+async function triggerAutoSync({ silent = false } = {}) {
+  if (isSyncingQueue) return;
+  const isOnline = typeof navigator !== "undefined" ? navigator.onLine !== false : true;
+  if (!isOnline) {
+    updateDbStatusBadge("offline");
+    return;
+  }
+
+  const pendingCount = getPendingSyncCount();
+  if (pendingCount === 0) {
+    const isAlive = await testSupabaseMenuWriteAccess();
+    if (isAlive) {
+      updateDbStatusBadge("connected");
+    } else {
+      updateDbStatusBadge("offline");
+    }
+    return;
+  }
+
+  isSyncingQueue = true;
+  updateDbStatusBadge("syncing");
+
+  try {
+    const res = await syncPendingQueueToSupabase();
+    if (res.success && res.processedCount > 0) {
+      if (!silent) {
+        showToast(`✓ ${res.processedCount} perubahan offline berhasil otomatis disinkronkan ke Supabase Cloud!`, "success");
+      }
+      await loadAllCmsData();
+    }
+  } catch (err) {
+    console.warn("[Admin Sync] Auto sync notice:", err);
+  } finally {
+    isSyncingQueue = false;
+    updateDbStatusBadge();
+  }
+}
+
+function initAutoSyncManager() {
+  // 1. Connection state listeners
+  window.addEventListener("online", async () => {
+    showToast("Koneksi online terdeteksi! Memulai sinkronisasi otomatis ke Supabase...", "info");
+    updateDbStatusBadge("syncing");
+    await triggerAutoSync({ silent: false });
+  });
+
+  window.addEventListener("offline", () => {
+    showToast("Mode Offline aktif. Perubahan tetap disimpan di buffer & otomatis disinkronkan saat terhubung kembali.", "info");
+    updateDbStatusBadge("offline");
+  });
+
+  // 2. Tab focus / visibility change
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      triggerAutoSync({ silent: true });
+    }
+  });
+
+  // 3. Queue update event listener
+  window.addEventListener("siomay_sync_queue_updated", () => {
+    updateDbStatusBadge();
+  });
+
+  // 4. Click status badge to manually sync anytime
+  const dbStatus = document.getElementById("cmsDbStatusIndicator");
+  if (dbStatus) {
+    dbStatus.addEventListener("click", async () => {
+      showToast("Memeriksa & menyinkronkan data ke Supabase Cloud...", "info");
+      await triggerAutoSync({ silent: false });
+    });
+  }
+
+  // 5. Periodic background auto-sync heartbeat (every 20 seconds)
+  setInterval(() => {
+    triggerAutoSync({ silent: true });
+  }, 20000);
+}
+
+// =============================================================================
 // INITIALIZATION
 // =============================================================================
 document.addEventListener("DOMContentLoaded", async () => {
@@ -91,6 +220,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initWhatsAppHandlers();
   initOrdersHandlers();
   initBrandingHandlers();
+  initAutoSyncManager();
 
   // Check existing session
   await checkAuthSession();
@@ -103,7 +233,6 @@ async function checkAuthSession() {
   const authScreen = document.getElementById("authView");
   const dashboard = document.getElementById("cmsDashboardLayout");
   const emailDisplay = document.getElementById("sidebarUserEmail");
-  const dbStatus = document.getElementById("cmsDbStatusIndicator");
 
   currentOwner = await getCurrentOwner();
 
@@ -111,17 +240,12 @@ async function checkAuthSession() {
     if (authScreen) authScreen.style.display = "none";
     if (dashboard) dashboard.style.display = "flex";
     if (emailDisplay) emailDisplay.textContent = currentOwner.email;
-    if (dbStatus) {
-      if (isSupabaseConfigured && supabase) {
-        dbStatus.innerHTML = `<span class="status-dot"></span> Supabase Terhubung`;
-        dbStatus.className = "cms-db-status status-connected";
-      } else {
-        dbStatus.innerHTML = `<span class="status-dot"></span> Mode Buffer Lokal (Offline)`;
-        dbStatus.className = "cms-db-status status-offline";
-      }
-    }
+    updateDbStatusBadge();
+    
     // Load initial data for all sections
     await loadAllCmsData();
+    // Attempt auto-sync of any pending offline changes
+    triggerAutoSync({ silent: true }).catch(() => {});
   } else {
     if (authScreen) authScreen.style.display = "flex";
     if (dashboard) dashboard.style.display = "none";
@@ -842,14 +966,17 @@ async function handleSaveMenuItem() {
 
     closeMenuModal();
     const successMsg = id 
-      ? `Menu "${name}" berhasil diperbarui!`
+      ? (res.isLive 
+          ? `Menu "${name}" berhasil diperbarui di Supabase Cloud!` 
+          : `Menu "${name}" diperbarui & tersimpan aman (otomatis disinkronkan ke Supabase)!`)
       : (res.isLive 
-          ? `Menu "${name}" berhasil ditambahkan ke database Supabase!` 
-          : `Menu "${name}" berhasil ditambahkan ke daftar menu!`);
+          ? `Menu "${name}" berhasil ditambahkan ke database Supabase Cloud!` 
+          : `Menu "${name}" tersimpan di buffer lokal & otomatis disinkronkan ke Supabase!`);
     showToast(successMsg, "success");
 
     await loadMenuItems();
     updateOverviewMetrics();
+    triggerAutoSync({ silent: true }).catch(() => {});
   } catch (err) {
     console.error("[CMS Save Menu] Error:", err);
     showMenuModalAlert("Terjadi kendala saat menyimpan: " + (err.message || "Unknown error"));
@@ -1132,7 +1259,10 @@ async function handleSaveHeroContent() {
   }
 
   siteSettings = res.settings;
-  showToast("Pengaturan banner & video berhasil disimpan!", "success");
+  showToast(res.isLive 
+    ? "Pengaturan banner & video berhasil disimpan ke Supabase Cloud!" 
+    : "Pengaturan banner & video tersimpan di buffer lokal & otomatis disinkronkan ke Supabase!", "success");
+  triggerAutoSync({ silent: true }).catch(() => {});
 }
 
 // =============================================================================
@@ -1299,7 +1429,10 @@ async function handleSaveOperations() {
     if (res.success) {
       siteSettings = res.settings;
       updateOverviewMetrics();
-      showToast("Pengaturan jam operasional dan lokasi toko berhasil diperbarui!", "success");
+      showToast(res.isLive 
+        ? "Pengaturan jam operasional dan lokasi toko berhasil diperbarui di Supabase Cloud!" 
+        : "Pengaturan jam & lokasi tersimpan di buffer lokal & otomatis disinkronkan ke Supabase!", "success");
+      triggerAutoSync({ silent: true }).catch(() => {});
     } else {
       showToast("Gagal menyimpan pengaturan: " + (res.error || "Terjadi kesalahan"), "error");
     }
@@ -1425,8 +1558,12 @@ async function handleSaveWhatsApp() {
     if (waInput) waInput.value = siteSettings.whatsapp_number;
     updateWhatsAppLinkPreview();
     updateOverviewMetrics();
-    showWaAlert("✓ Nomor WhatsApp toko berhasil disimpan dan diperbarui di seluruh website!", "success");
-    showToast("Nomor WhatsApp toko berhasil diperbarui!", "success");
+    const waSuccessMsg = res.isLive
+      ? "✓ Nomor WhatsApp toko berhasil disimpan langsung ke database Supabase Cloud!"
+      : "✓ Nomor WhatsApp toko disimpan ke buffer lokal & otomatis disinkronkan ke Supabase!";
+    showWaAlert(waSuccessMsg, "success");
+    showToast(waSuccessMsg, "success");
+    triggerAutoSync({ silent: true }).catch(() => {});
   } catch (err) {
     console.error("[CMS WhatsApp] Error saving WhatsApp:", err);
     showWaAlert("Terjadi kendala saat menyimpan: " + (err.message || err), "error");
@@ -1485,7 +1622,10 @@ function initBrandingHandlers() {
           siteSettings = res.settings;
           const sidebarBrandImg = document.querySelector(".cms-sidebar-brand img");
           if (sidebarBrandImg) sidebarBrandImg.src = logo_url;
-          showToast("Logo Website berhasil diperbarui & disimpan (Favicon tetap utuh)!", "success");
+          showToast(res.isLive 
+            ? "Logo Website berhasil diperbarui & disimpan di Supabase Cloud!" 
+            : "Logo Website disimpan di buffer (otomatis disinkronkan ke Supabase saat online)!", "success");
+          triggerAutoSync({ silent: true }).catch(() => {});
         } else {
           showToast("Gagal menyimpan logo: " + (res.error || "Terjadi kesalahan"), "error");
         }
@@ -1525,7 +1665,10 @@ function initBrandingHandlers() {
           siteSettings = res.settings;
           const adminFavicon = document.querySelector("link[rel*='icon']");
           if (adminFavicon) adminFavicon.href = favicon_url;
-          showToast("Favicon Tab Browser berhasil diperbarui & disimpan (Logo Website tetap utuh)!", "success");
+          showToast(res.isLive 
+            ? "Favicon Browser berhasil diperbarui & disimpan di Supabase Cloud!" 
+            : "Favicon Browser disimpan di buffer (otomatis disinkronkan ke Supabase saat online)!", "success");
+          triggerAutoSync({ silent: true }).catch(() => {});
         } else {
           showToast("Gagal menyimpan favicon: " + (res.error || "Terjadi kesalahan"), "error");
         }
@@ -1665,12 +1808,15 @@ function initBrandingHandlers() {
 
       if (res.success) {
         siteSettings = res.settings;
-        showToast("Pengaturan Logo & Favicon berhasil disimpan ke Supabase!", "success");
+        showToast(res.isLive 
+          ? "Pengaturan Logo & Favicon berhasil disimpan ke Supabase Cloud!" 
+          : "Pengaturan Logo & Favicon disimpan di buffer (otomatis disinkronkan ke Supabase saat online)!", "success");
         // Also update sidebar logo if present
         const sidebarBrandImg = document.querySelector(".cms-sidebar-brand img");
         if (sidebarBrandImg) sidebarBrandImg.src = logo_url;
         const adminFavicon = document.querySelector("link[rel*='icon']");
         if (adminFavicon) adminFavicon.href = favicon_url;
+        triggerAutoSync({ silent: true }).catch(() => {});
       } else {
         showToast("Gagal menyimpan branding: " + (res.error || "Terjadi kesalahan"), "error");
       }
@@ -2536,6 +2682,7 @@ async function updateOrderStatus(orderId, newStatus) {
     showToast(`Status pesanan ${orderId} diubah ke '${newStatus}'.`, "success");
     renderCustomerOrders();
     updateOverviewMetrics();
+    triggerAutoSync({ silent: true }).catch(() => {});
   }
 }
 
@@ -2546,5 +2693,6 @@ async function deleteOrder(orderId) {
   showToast(`Pesanan ${orderId} berhasil dihapus.`, "info");
   renderCustomerOrders();
   updateOverviewMetrics();
+  triggerAutoSync({ silent: true }).catch(() => {});
 }
 
