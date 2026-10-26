@@ -823,7 +823,7 @@
                 </div>
               </div>
 
-              <div class="branding-actions">
+              <div class="branding-actions" style="flex-wrap: wrap; gap: 8px;">
                 <input type="file" id="inputBrandLogo" accept="image/png,image/svg+xml,image/jpeg,image/webp"
                   style="display: none;">
                 <button type="button" class="btn btn-secondary btn-sm" id="btnChooseBrandLogo">
@@ -841,6 +841,10 @@
                 </button>
                 <button type="button" class="btn btn-outline btn-sm" id="btnResetBrandLogo">
                   <span>Reset ke Logo Bawaan</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnSaveLogoOnly" style="margin-left: auto;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                  <span>Simpan Logo Website Saja</span>
                 </button>
               </div>
               <input type="hidden" id="settingLogoUrl" value="/images/logo.png">
@@ -867,14 +871,13 @@
                   </div>
                 </div>
                 <div class="stage-footer">
-                  <span class="stage-spec">Rekomendasi: Format PNG atau ICO persegi (1:1), ukuran 32x32 atau 64x64
-                    px.</span>
+                  <span class="stage-spec">Rekomendasi: Format PNG, ICO, SVG, atau JPG/WebP persegi (1:1), ukuran 32x32, 64x64, atau 128x128 px.</span>
                 </div>
               </div>
 
-              <div class="branding-actions">
+              <div class="branding-actions" style="flex-wrap: wrap; gap: 8px;">
                 <input type="file" id="inputBrandFavicon"
-                  accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml" style="display: none;">
+                  accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/ico,image/svg+xml,image/jpeg,image/webp" style="display: none;">
                 <button type="button" class="btn btn-secondary btn-sm" id="btnChooseBrandFavicon">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -890,6 +893,10 @@
                 </button>
                 <button type="button" class="btn btn-outline btn-sm" id="btnResetBrandFavicon">
                   <span>Reset ke Favicon Bawaan</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnSaveFaviconOnly" style="margin-left: auto;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                  <span>Simpan Favicon Saja</span>
                 </button>
               </div>
               <input type="hidden" id="settingFaviconUrl" value="/favicon.png">

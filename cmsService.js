@@ -14,7 +14,17 @@ import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg", 
+  "image/png", 
+  "image/webp", 
+  "image/avif",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+  "image/ico",
+  "image/icon",
+  "image/svg+xml"
+];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
 
 // =============================================================================
@@ -823,8 +833,9 @@ function fileToDataUrl(file, maxWidth = 800, maxHeight = 800, quality = 0.82) {
       return;
     }
 
-    // In Browser: Compress images with HTML5 Canvas to prevent LocalStorage Quota Exceeded
-    if (file && file.type && file.type.startsWith("image/") && typeof document !== "undefined") {
+    // In Browser: If SVG or ICO, keep raw data URL to preserve vector/pixel sharpness
+    const isVectorOrIcon = file.type === "image/svg+xml" || (file.type && file.type.includes("icon")) || /\.(ico|svg)$/i.test(file.name || "");
+    if (!isVectorOrIcon && file && file.type && file.type.startsWith("image/") && typeof document !== "undefined") {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
@@ -878,13 +889,17 @@ export async function uploadMediaFile(file, folder = "menu") {
     return { success: false, error: "Tidak ada file yang dipilih." };
   }
 
-  const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
-  const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+  const fileNameLower = (file.name || "").toLowerCase();
+  const isImageByExt = /\.(jpg|jpeg|png|webp|avif|ico|svg)$/i.test(fileNameLower);
+  const isVideoByExt = /\.(mp4|webm)$/i.test(fileNameLower);
+
+  const isImage = ALLOWED_IMAGE_TYPES.includes(file.type) || isImageByExt;
+  const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type) || isVideoByExt;
 
   if (!isImage && !isVideo) {
     return {
       success: false,
-      error: `Format file tidak didukung (${file.type}). Hanya format JPG, PNG, WebP, AVIF, MP4, atau WebM yang diperbolehkan.`
+      error: `Format file tidak didukung (${file.type || "unknown"}). Hanya format PNG, ICO, SVG, JPG, WebP, MP4, atau WebM yang diperbolehkan.`
     };
   }
 

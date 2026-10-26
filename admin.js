@@ -1408,6 +1408,88 @@ function initBrandingHandlers() {
 
   const btnSaveTop = document.getElementById("btnSaveBranding");
   const btnSaveBottom = document.getElementById("btnSaveBrandingBottom");
+  const btnSaveLogoOnly = document.getElementById("btnSaveLogoOnly");
+  const btnSaveFaviconOnly = document.getElementById("btnSaveFaviconOnly");
+
+  // Save Logo Only action (completely independent, does NOT touch favicon)
+  if (btnSaveLogoOnly) {
+    btnSaveLogoOnly.addEventListener("click", async () => {
+      let logo_url = logoUrlInput?.value.trim() || "/images/logo.png";
+      btnSaveLogoOnly.disabled = true;
+      btnSaveLogoOnly.innerHTML = "<span>Menyimpan Logo...</span>";
+
+      try {
+        if (logo_url.startsWith("data:image/")) {
+          const up = await uploadDataUrlToStorage(logo_url, "branding", "ai-logo.png");
+          if (up.success && up.url) {
+            logo_url = up.url;
+            if (logoUrlInput) logoUrlInput.value = logo_url;
+          }
+        }
+
+        const res = await updateSiteSettings({
+          logo_url
+        });
+
+        if (res.success) {
+          siteSettings = res.settings;
+          const sidebarBrandImg = document.querySelector(".cms-sidebar-brand img");
+          if (sidebarBrandImg) sidebarBrandImg.src = logo_url;
+          showToast("Logo Website berhasil diperbarui & disimpan (Favicon tetap utuh)!", "success");
+        } else {
+          showToast("Gagal menyimpan logo: " + (res.error || "Terjadi kesalahan"), "error");
+        }
+      } catch (err) {
+        showToast("Terjadi kendala saat menyimpan logo: " + err.message, "error");
+      } finally {
+        btnSaveLogoOnly.disabled = false;
+        btnSaveLogoOnly.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          <span>Simpan Logo Website Saja</span>
+        `;
+      }
+    });
+  }
+
+  // Save Favicon Only action (completely independent, does NOT touch logo website)
+  if (btnSaveFaviconOnly) {
+    btnSaveFaviconOnly.addEventListener("click", async () => {
+      let favicon_url = faviconUrlInput?.value.trim() || "/favicon.png";
+      btnSaveFaviconOnly.disabled = true;
+      btnSaveFaviconOnly.innerHTML = "<span>Menyimpan Favicon...</span>";
+
+      try {
+        if (favicon_url.startsWith("data:image/")) {
+          const up = await uploadDataUrlToStorage(favicon_url, "branding", "ai-favicon.png");
+          if (up.success && up.url) {
+            favicon_url = up.url;
+            if (faviconUrlInput) faviconUrlInput.value = favicon_url;
+          }
+        }
+
+        const res = await updateSiteSettings({
+          favicon_url
+        });
+
+        if (res.success) {
+          siteSettings = res.settings;
+          const adminFavicon = document.querySelector("link[rel*='icon']");
+          if (adminFavicon) adminFavicon.href = favicon_url;
+          showToast("Favicon Tab Browser berhasil diperbarui & disimpan (Logo Website tetap utuh)!", "success");
+        } else {
+          showToast("Gagal menyimpan favicon: " + (res.error || "Terjadi kesalahan"), "error");
+        }
+      } catch (err) {
+        showToast("Terjadi kendala saat menyimpan favicon: " + err.message, "error");
+      } finally {
+        btnSaveFaviconOnly.disabled = false;
+        btnSaveFaviconOnly.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          <span>Simpan Favicon Saja</span>
+        `;
+      }
+    });
+  }
 
   // Logo upload
   if (btnChooseLogo && inputLogo) {
@@ -1596,7 +1678,10 @@ function initAiStudioHandlers() {
   const btnApproveFavicon = document.getElementById("btnApproveAiFavicon");
   const btnDownloadPng = document.getElementById("btnDownloadAiResult");
 
-  const openModal = (initialSourceUrl = null) => {
+  let aiStudioTarget = "general"; // "logo" | "favicon" | "general"
+
+  const openModal = (initialSourceUrl = null, target = "general") => {
+    aiStudioTarget = target;
     if (modal) {
       modal.style.display = "flex";
       modal.classList.add("open");
@@ -1608,7 +1693,32 @@ function initAiStudioHandlers() {
     document.body.style.overflow = "hidden";
     resetAiStudioState();
 
-    const targetUrl = initialSourceUrl || document.getElementById("settingLogoUrl")?.value || "/images/logo.png";
+    const titleEl = document.getElementById("aiStudioModalTitle");
+    if (titleEl) {
+      if (target === "favicon") {
+        titleEl.textContent = "Smart Background Remover — Favicon Browser";
+      } else if (target === "logo") {
+        titleEl.textContent = "Smart Background Remover — Logo Website";
+      } else {
+        titleEl.textContent = "Smart Background Remover";
+      }
+    }
+
+    if (btnApproveLogo && btnApproveFavicon) {
+      if (target === "logo") {
+        btnApproveLogo.style.display = "inline-flex";
+        btnApproveFavicon.style.display = "none";
+      } else if (target === "favicon") {
+        btnApproveLogo.style.display = "none";
+        btnApproveFavicon.style.display = "inline-flex";
+      } else {
+        btnApproveLogo.style.display = "inline-flex";
+        btnApproveFavicon.style.display = "inline-flex";
+      }
+    }
+
+    const fallbackUrl = target === "favicon" ? (document.getElementById("settingFaviconUrl")?.value || "/favicon.png") : (document.getElementById("settingLogoUrl")?.value || "/images/logo.png");
+    const targetUrl = initialSourceUrl || fallbackUrl;
     if (targetUrl) {
       loadSourceImage(targetUrl);
     }
@@ -1637,13 +1747,13 @@ function initAiStudioHandlers() {
   });
 
   if (btnLaunchBanner) {
-    btnLaunchBanner.addEventListener("click", () => openModal(document.getElementById("settingLogoUrl")?.value));
+    btnLaunchBanner.addEventListener("click", () => openModal(document.getElementById("settingLogoUrl")?.value, "logo"));
   }
   if (btnOpenLogo) {
-    btnOpenLogo.addEventListener("click", () => openModal(document.getElementById("settingLogoUrl")?.value));
+    btnOpenLogo.addEventListener("click", () => openModal(document.getElementById("settingLogoUrl")?.value, "logo"));
   }
   if (btnOpenFavicon) {
-    btnOpenFavicon.addEventListener("click", () => openModal(document.getElementById("settingFaviconUrl")?.value));
+    btnOpenFavicon.addEventListener("click", () => openModal(document.getElementById("settingFaviconUrl")?.value, "favicon"));
   }
 
   // Upload trigger
@@ -1932,7 +2042,7 @@ function initAiStudioHandlers() {
       if (logoPreview) logoPreview.src = processedAiDataUrl;
 
       closeModal();
-      showToast("Hasil AI disetujui untuk Logo Website! Klik 'Simpan Perubahan Branding' untuk menerapkan ke web.", "success");
+      showToast("Hasil AI disetujui untuk Logo Website! Klik 'Simpan Logo Website Saja' untuk menerapkan.", "success");
     });
   }
 
@@ -1969,7 +2079,7 @@ function initAiStudioHandlers() {
       if (adminFavicon) adminFavicon.href = faviconDataUrl;
 
       closeModal();
-      showToast("Hasil AI disetujui untuk Favicon Browser! Klik 'Simpan Perubahan Branding' untuk menerapkan.", "success");
+      showToast("Hasil AI disetujui untuk Favicon Browser! Klik 'Simpan Favicon Saja' untuk menerapkan.", "success");
     });
   }
 
