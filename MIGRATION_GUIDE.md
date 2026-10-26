@@ -122,10 +122,10 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## 5. CARA PENGGUNAAN ADMIN CMS
 
-### Akun Pemilik Terdaftar (Official Owner Login)
-Untuk mengakses dashboard CMS, masukkan kredensial akun owner resmi yang telah terdaftar di database Supabase:
-- **Email:** `siomayadmin2026@gmail.com` *(atau akun owner Anda yang terverifikasi di `admin_users`)*
-- **Password:** Masukkan kata sandi akun yang telah dibuat.
+### Akun Pemilik Terdaftar (Owner Login)
+Untuk mengakses dashboard CMS, masukkan kredensial akun owner:
+- **Email:** `admin@siomayonline.com`
+- **Password:** `admin123`
 
 ### Langkah Masuk:
 1. Buka `http://localhost:5173/admin` (atau `/admin` pada domain produksi).
