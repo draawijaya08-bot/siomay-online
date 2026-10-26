@@ -51,12 +51,19 @@ function updateBulkSelectionUi() {
 
   if (btnDeleteSelected) {
     if (selected > 0) {
-      btnDeleteSelected.style.display = "inline-flex";
+      btnDeleteSelected.disabled = false;
+      btnDeleteSelected.style.opacity = "1";
+      btnDeleteSelected.style.cursor = "pointer";
       if (btnDeleteSelectedLabel) {
-        btnDeleteSelectedLabel.textContent = `Hapus Terpilih (${selected})`;
+        btnDeleteSelectedLabel.textContent = `Hapus Menu Terpilih (${selected})`;
       }
     } else {
-      btnDeleteSelected.style.display = "none";
+      btnDeleteSelected.disabled = true;
+      btnDeleteSelected.style.opacity = "0.5";
+      btnDeleteSelected.style.cursor = "not-allowed";
+      if (btnDeleteSelectedLabel) {
+        btnDeleteSelectedLabel.textContent = `Hapus Menu Terpilih (0)`;
+      }
     }
   }
 
@@ -607,11 +614,12 @@ function renderMenuGrid(items) {
 
     card.innerHTML = `
       <div class="menu-card-img-wrap" style="position: relative;">
-        <label class="menu-card-select-label" title="Pilih menu ini untuk dihapus" style="position: absolute; top: 10px; left: 10px; z-index: 6; background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; padding: 4px 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.18);">
+        <label class="menu-card-select-label" title="Centang untuk memilih menu ini agar bisa dihapus" style="position: absolute; top: 10px; left: 10px; z-index: 6; background: rgba(255,255,255,0.96); border: 1.5px solid #CBD5E1; border-radius: 6px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.18); user-select: none;">
           <input type="checkbox" class="menu-item-checkbox" data-id="${item.id}" data-name="${item.name}" style="width: 17px; height: 17px; cursor: pointer; accent-color: #de4a1d; margin: 0;">
+          <span style="font-size: 0.78rem; font-weight: 700; color: #1E293B;">Pilih Hapus</span>
         </label>
         <img src="${item.image_url}" alt="${item.name}" class="menu-thumb" loading="lazy">
-        <div class="menu-status-badge ${item.is_available ? 'badge-available' : 'badge-out-of-stock'}" style="left: 48px;">
+        <div class="menu-status-badge ${item.is_available ? 'badge-available' : 'badge-out-of-stock'}" style="top: auto; bottom: 10px; left: 10px;">
           ${item.is_available ? 'Tersedia' : 'Stok Habis'}
         </div>
         ${item.is_best_seller ? '<span class="menu-bestseller-tag">Best Seller</span>' : ''}
@@ -1075,8 +1083,10 @@ async function loadSiteSettings() {
   if (faviconInput) faviconInput.value = siteSettings.favicon_url || "/favicon.png";
   if (faviconPreview) faviconPreview.src = siteSettings.favicon_url || "/favicon.png";
 
-  const adminFavicon = document.querySelector("link[rel*='icon']");
-  if (adminFavicon && siteSettings.favicon_url) adminFavicon.href = siteSettings.favicon_url;
+  const adminFavicons = document.querySelectorAll("link[rel*='icon']");
+  if (adminFavicons.length > 0 && siteSettings.favicon_url) {
+    adminFavicons.forEach(fav => fav.href = siteSettings.favicon_url);
+  }
 }
 
 async function handleSaveHeroContent() {
