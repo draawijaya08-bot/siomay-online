@@ -310,6 +310,27 @@ function initSidebarNavigation() {
   if (btnQuickWa) {
     btnQuickWa.addEventListener("click", () => {
       switchView("viewWhatsApp");
+      const waInput = document.getElementById("settingWhatsAppNumber");
+      if (waInput) {
+        setTimeout(() => {
+          waInput.focus();
+          waInput.select();
+        }, 120);
+      }
+    });
+  }
+
+  const cardMetricWa = document.getElementById("cardMetricWhatsApp");
+  if (cardMetricWa) {
+    cardMetricWa.addEventListener("click", () => {
+      switchView("viewWhatsApp");
+      const waInput = document.getElementById("settingWhatsAppNumber");
+      if (waInput) {
+        setTimeout(() => {
+          waInput.focus();
+          waInput.select();
+        }, 120);
+      }
     });
   }
 
@@ -1245,6 +1266,8 @@ async function handleSaveOperations() {
 // =============================================================================
 // 7. WHATSAPP SETTINGS
 // =============================================================================
+let isSavingWhatsApp = false;
+
 function initWhatsAppHandlers() {
   const form = document.getElementById("whatsAppSettingsForm");
   const waInput = document.getElementById("settingWhatsAppNumber");
@@ -1283,6 +1306,8 @@ function updateWhatsAppLinkPreview() {
   let rawNumber = waInput ? waInput.value.replace(/[^0-9]/g, "") : "";
   if (rawNumber.startsWith("0")) {
     rawNumber = "62" + rawNumber.substring(1);
+  } else if (rawNumber.startsWith("8")) {
+    rawNumber = "62" + rawNumber;
   }
 
   const msg = msgInput ? msgInput.value.trim() : "";
@@ -1292,7 +1317,20 @@ function updateWhatsAppLinkPreview() {
   if (testBtn) testBtn.href = fullUrl;
 }
 
+function showWaAlert(message, type = "success") {
+  const alertEl = document.getElementById("waSettingsAlert");
+  if (!alertEl) return;
+  alertEl.textContent = message;
+  alertEl.className = `cms-alert cms-alert-${type}`;
+  alertEl.style.display = "block";
+  setTimeout(() => {
+    alertEl.style.display = "none";
+  }, 5000);
+}
+
 async function handleSaveWhatsApp() {
+  if (isSavingWhatsApp) return;
+
   const waInput = document.getElementById("settingWhatsAppNumber");
   const msgInput = document.getElementById("settingDefaultOrderMessage");
   const btnSave = document.getElementById("btnSaveWhatsApp");
@@ -1300,12 +1338,18 @@ async function handleSaveWhatsApp() {
   let rawNumber = waInput ? waInput.value.replace(/[^0-9]/g, "") : "";
   if (rawNumber.startsWith("0")) {
     rawNumber = "62" + rawNumber.substring(1);
+  } else if (rawNumber.startsWith("8")) {
+    rawNumber = "62" + rawNumber;
   }
 
   if (!rawNumber || rawNumber.length < 8) {
+    showWaAlert("Nomor WhatsApp belum valid (minimal 8 angka).", "error");
     showToast("Nomor WhatsApp belum valid (minimal 8 angka).", "error");
+    if (waInput) waInput.focus();
     return;
   }
+
+  isSavingWhatsApp = true;
 
   const payload = {
     ...(siteSettings || {}),
@@ -1318,21 +1362,32 @@ async function handleSaveWhatsApp() {
     btnSave.textContent = "Menyimpan...";
   }
 
-  const res = await updateSiteSettings(payload);
+  try {
+    const res = await updateSiteSettings(payload);
 
-  if (btnSave) {
-    btnSave.disabled = false;
-    btnSave.textContent = "Simpan Nomor WhatsApp";
+    if (!res.success) {
+      showWaAlert(`Gagal menyimpan: ${res.error || "Terjadi kendala"}`, "error");
+      showToast(`Gagal menyimpan: ${res.error || "Terjadi kendala"}`, "error");
+      return;
+    }
+
+    siteSettings = res.settings;
+    if (waInput) waInput.value = siteSettings.whatsapp_number;
+    updateWhatsAppLinkPreview();
+    updateOverviewMetrics();
+    showWaAlert("✓ Nomor WhatsApp toko berhasil disimpan dan diperbarui di seluruh website!", "success");
+    showToast("Nomor WhatsApp toko berhasil diperbarui!", "success");
+  } catch (err) {
+    console.error("[CMS WhatsApp] Error saving WhatsApp:", err);
+    showWaAlert("Terjadi kendala saat menyimpan: " + (err.message || err), "error");
+    showToast("Terjadi kendala: " + (err.message || err), "error");
+  } finally {
+    isSavingWhatsApp = false;
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.textContent = "Simpan Nomor WhatsApp";
+    }
   }
-
-  if (!res.success) {
-    showToast(`Gagal menyimpan: ${res.error}`, "error");
-    return;
-  }
-
-  siteSettings = res.settings;
-  showToast("Nomor WhatsApp toko berhasil diperbarui!", "success");
-  updateOverviewMetrics();
 }
 
 // =============================================================================
