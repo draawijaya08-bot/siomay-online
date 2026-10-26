@@ -295,6 +295,16 @@ export function buildWhatsAppOrderUrl(cartSummary, customer) {
 import { initReviewsSection, openReviewModal } from "./reviews.js";
 import { fetchAllMenuItems, fetchSiteSettings } from "./cmsService.js";
 
+let isSyncingBackend = false;
+let syncBackendTimer = null;
+
+function debouncedSyncPublicWebsiteFromBackend() {
+  if (syncBackendTimer) clearTimeout(syncBackendTimer);
+  syncBackendTimer = setTimeout(() => {
+    syncPublicWebsiteFromBackend();
+  }, 250);
+}
+
 // =============================================================================
 // 5. DOM INITIALIZATION & DYNAMIC CMS SYNC
 // =============================================================================
@@ -318,14 +328,14 @@ if (typeof document !== "undefined") {
     if (typeof window !== "undefined") {
       window.addEventListener("storage", (e) => {
         if (e.key === "siomay_menu_items_v2" || e.key === "siomay_site_settings_v1") {
-          syncPublicWebsiteFromBackend();
+          debouncedSyncPublicWebsiteFromBackend();
         }
       });
       window.addEventListener("siomay_menu_updated", () => {
-        syncPublicWebsiteFromBackend();
+        debouncedSyncPublicWebsiteFromBackend();
       });
       window.addEventListener("siomay_settings_updated", () => {
-        syncPublicWebsiteFromBackend();
+        debouncedSyncPublicWebsiteFromBackend();
       });
     }
   });
@@ -335,6 +345,8 @@ if (typeof document !== "undefined") {
  * Synchronize live content from Supabase backend
  */
 async function syncPublicWebsiteFromBackend() {
+  if (isSyncingBackend) return;
+  isSyncingBackend = true;
   try {
     const [menuRes, settingsRes] = await Promise.all([
       fetchAllMenuItems(),
@@ -446,6 +458,8 @@ async function syncPublicWebsiteFromBackend() {
     }
   } catch (err) {
     console.info("[Siomay Online] Menggunakan konten default:", err);
+  } finally {
+    isSyncingBackend = false;
   }
 }
 
@@ -481,9 +495,38 @@ function renderPromoVideoOnPublicSite(videoUrl, posterUrl = null) {
 // =============================================================================
 // 6. RENDER MENU CARDS FROM PRODUCTS
 // =============================================================================
+let lastRenderedMenuHash = "";
+let menuGridListenerInitialized = false;
+
+function initMenuGridClickDelegation() {
+  const grid = document.getElementById("menuGrid");
+  if (!grid || menuGridListenerInitialized) return;
+  menuGridListenerInitialized = true;
+
+  grid.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-add-to-cart]");
+    if (!btn || btn.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const productId = btn.getAttribute("data-add-to-cart");
+    if (productId) {
+      addToCart(productId, 1);
+    }
+  });
+}
+
 function renderMenuCards() {
   const grid = document.getElementById("menuGrid");
   if (!grid) return;
+
+  initMenuGridClickDelegation();
+
+  const currentHash = activeProducts.map(p => `${p.id}:${p.name}:${p.price}:${p.isAvailable}:${p.image}`).join("|");
+  if (currentHash === lastRenderedMenuHash && grid.children.length > 0) {
+    return;
+  }
+  lastRenderedMenuHash = currentHash;
 
   grid.innerHTML = activeProducts.map((product, idx) => {
     const isHighlight = product.isBestSeller ? "menu-card-highlight" : "";
@@ -555,15 +598,6 @@ function renderMenuCards() {
     `;
   }).join("");
 
-  // Bind click listener for '+ Tambah'
-  grid.querySelectorAll("[data-add-to-cart]").forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      const productId = btn.getAttribute("data-add-to-cart");
-      addToCart(productId, 1);
-    });
-  });
-
   // Re-observe scroll reveal
   initScrollReveal();
 }
@@ -577,24 +611,24 @@ function triggerCartButtonFeedback(productId) {
   const originalText = textSpan ? textSpan.textContent : "Tambah";
   const originalIcon = iconSpan ? iconSpan.textContent : "+";
 
-  if (textSpan) textSpan.textContent = "Ditambahkan";
+  if (textSpan) textSpan.textContent = "Ditambah";
   if (iconSpan) iconSpan.textContent = "✓";
   btn.classList.add("btn-added-feedback");
 
-  // Subtle bounce on cart badge
+  // Subtle bounce on cart badge without layout thrashing
   const badges = document.querySelectorAll(".cart-badge");
   badges.forEach(b => {
     b.classList.remove("badge-bump");
-    // force reflow
-    void b.offsetWidth;
-    b.classList.add("badge-bump");
+    requestAnimationFrame(() => {
+      b.classList.add("badge-bump");
+    });
   });
 
   setTimeout(() => {
     if (textSpan) textSpan.textContent = originalText;
     if (iconSpan) iconSpan.textContent = originalIcon;
     btn.classList.remove("btn-added-feedback");
-  }, 1100);
+  }, 800);
 }
 
 // =============================================================================
@@ -699,6 +733,52 @@ function initCartDrawer() {
       });
     }
   });
+
+  // Bind clear cart button in header
+  const btnClearCart = document.getElementById("btnClearCart");
+  if (btnClearCart) {
+    btnClearCart.addEventListener("click", () => {
+      clearCart();
+    });
+  }
+}
+
+/**
+ * Event delegation for cart items (+, -, and remove)
+ */
+let cartItemsListenerInitialized = false;
+
+function initCartItemsDelegation() {
+  const itemsContainer = document.getElementById("cartItemsList");
+  if (!itemsContainer || cartItemsListenerInitialized) return;
+  cartItemsListenerInitialized = true;
+
+  itemsContainer.addEventListener("click", (e) => {
+    // 1. Remove button
+    const removeBtn = e.target.closest("[data-remove-item]");
+    if (removeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = removeBtn.getAttribute("data-remove-item");
+      if (id) removeFromCart(id);
+      return;
+    }
+
+    // 2. Quantity buttons (+ / -)
+    const qtyBtn = e.target.closest("[data-qty-action]");
+    if (qtyBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = qtyBtn.getAttribute("data-qty-id");
+      const action = qtyBtn.getAttribute("data-qty-action");
+      if (id && action === "increase") {
+        updateCartQuantity(id, 1);
+      } else if (id && action === "decrease") {
+        updateCartQuantity(id, -1);
+      }
+      return;
+    }
+  });
 }
 
 /**
@@ -718,10 +798,14 @@ export function updateCartUI() {
     }
   });
 
-  // 2. Update Drawer Header Count
+  // 2. Update Drawer Header Count & Clear Button
   const drawerCount = document.getElementById("drawerCartCount");
   if (drawerCount) {
     drawerCount.textContent = `${summary.itemCount} item`;
+  }
+  const btnClearCart = document.getElementById("btnClearCart");
+  if (btnClearCart) {
+    btnClearCart.style.display = summary.itemCount > 0 ? "inline-flex" : "none";
   }
 
   // 3. Update Summary Numbers
@@ -756,6 +840,9 @@ function renderCartDrawerItems(summary) {
   const successView = document.getElementById("cartSuccessView");
 
   if (!itemsContainer) return;
+
+  // Initialize delegated click handling on itemsContainer once
+  initCartItemsDelegation();
 
   // If in success state, don't overwrite view unless empty
   if (successView && successView.style.display === "block" && summary.itemCount === 0) {
@@ -838,24 +925,6 @@ function renderCartDrawerItems(summary) {
       </div>
     `;
   }).join("");
-
-  // Bind quantity buttons
-  itemsContainer.querySelectorAll("[data-qty-action]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-qty-id");
-      const action = btn.getAttribute("data-qty-action");
-      if (action === "increase") updateCartQuantity(id, 1);
-      if (action === "decrease") updateCartQuantity(id, -1);
-    });
-  });
-
-  // Bind remove buttons
-  itemsContainer.querySelectorAll("[data-remove-item]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-remove-item");
-      removeFromCart(id);
-    });
-  });
 }
 
 // =============================================================================

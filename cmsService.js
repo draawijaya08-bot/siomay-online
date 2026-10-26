@@ -278,7 +278,7 @@ export function getLocalMenuItems() {
   }
 }
 
-export function saveLocalMenuItems(items) {
+export function saveLocalMenuItems(items, { emitEvent = true } = {}) {
   const safeItems = Array.isArray(items) ? items : DEFAULT_MENU_ITEMS;
   if (typeof localStorage !== "undefined") {
     try {
@@ -290,7 +290,7 @@ export function saveLocalMenuItems(items) {
     inMemoryMenuItems = JSON.parse(JSON.stringify(safeItems));
   }
 
-  if (typeof window !== "undefined") {
+  if (emitEvent && typeof window !== "undefined") {
     try {
       window.dispatchEvent(new CustomEvent("siomay_menu_updated", { detail: { items: safeItems } }));
     } catch {}
@@ -355,7 +355,7 @@ export async function fetchAllMenuItems() {
         });
 
         const combined = [...localCreatedOnly, ...mergedDbItems];
-        saveLocalMenuItems(combined);
+        saveLocalMenuItems(combined, { emitEvent: false });
         return { success: true, items: combined, isLive: true };
       }
     } catch (err) {
@@ -599,7 +599,7 @@ export function getLocalSiteSettings() {
   }
 }
 
-export function saveLocalSiteSettings(settings) {
+export function saveLocalSiteSettings(settings, { emitEvent = true } = {}) {
   const safe = { ...DEFAULT_SITE_SETTINGS, ...(settings || {}) };
   if (typeof localStorage !== "undefined") {
     try {
@@ -611,7 +611,7 @@ export function saveLocalSiteSettings(settings) {
     inMemorySettings = safe;
   }
 
-  if (typeof window !== "undefined") {
+  if (emitEvent && typeof window !== "undefined") {
     try {
       window.dispatchEvent(new CustomEvent("siomay_settings_updated", { detail: { settings: safe } }));
     } catch {}
@@ -640,7 +640,7 @@ export async function fetchSiteSettings() {
             console.warn("[CMS Settings] Notice parsing __OP_CONFIG__:", e);
           }
         }
-        saveLocalSiteSettings(data);
+        saveLocalSiteSettings(data, { emitEvent: false });
         return { success: true, settings: data, isLive: true };
       }
     } catch (err) {
