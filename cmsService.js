@@ -799,9 +799,14 @@ export async function updateSiteSettings(settingsData) {
   const localCurrent = getLocalSiteSettings();
   const current = { ...DEFAULT_SITE_SETTINGS, ...localCurrent, ...(existingDbRow || {}) };
 
-  let cleanWhatsApp = (settingsData.whatsapp_number !== undefined 
+  const safeStr = (val, fallback = "") => {
+    if (val === null || val === undefined) return fallback;
+    return String(val).trim();
+  };
+
+  let cleanWhatsApp = safeStr(settingsData.whatsapp_number !== undefined 
     ? settingsData.whatsapp_number 
-    : current.whatsapp_number || "").replace(/[^0-9]/g, "");
+    : current.whatsapp_number).replace(/[^0-9]/g, "");
 
   if (cleanWhatsApp.startsWith("0")) {
     cleanWhatsApp = "62" + cleanWhatsApp.substring(1);
@@ -811,31 +816,31 @@ export async function updateSiteSettings(settingsData) {
 
   const opConfig = {
     operational_status: settingsData.operational_status || current.operational_status || "buka",
-    operational_status_label: (settingsData.operational_status_label !== undefined ? settingsData.operational_status_label : current.operational_status_label || "Buka Hari Ini:").trim(),
-    operational_open_time: settingsData.operational_open_time || current.operational_open_time || "08:00",
-    operational_close_time: settingsData.operational_close_time || current.operational_close_time || "21:00",
-    operational_timezone: settingsData.operational_timezone || current.operational_timezone || "WIB",
-    operational_days: settingsData.operational_days || current.operational_days || "Setiap Hari",
-    operational_hours: (settingsData.operational_hours !== undefined ? settingsData.operational_hours : current.operational_hours || "08.00 — 21.00 WIB").trim(),
-    delivery_area: (settingsData.delivery_area !== undefined ? settingsData.delivery_area : current.delivery_area || "Jabodetabek & Sekitarnya").trim(),
-    strip_announcement: (settingsData.strip_announcement !== undefined ? settingsData.strip_announcement : current.strip_announcement || "100% Ikan Tenggiri • Fresh Setiap Hari").trim(),
-    logo_url: settingsData.logo_url || current.logo_url || "/images/logo.png",
-    favicon_url: settingsData.favicon_url || current.favicon_url || "/favicon.png"
+    operational_status_label: safeStr(settingsData.operational_status_label !== undefined ? settingsData.operational_status_label : current.operational_status_label, "Buka Hari Ini:"),
+    operational_open_time: safeStr(settingsData.operational_open_time || current.operational_open_time, "08:00"),
+    operational_close_time: safeStr(settingsData.operational_close_time || current.operational_close_time, "21:00"),
+    operational_timezone: safeStr(settingsData.operational_timezone || current.operational_timezone, "WIB"),
+    operational_days: safeStr(settingsData.operational_days || current.operational_days, "Setiap Hari"),
+    operational_hours: safeStr(settingsData.operational_hours !== undefined ? settingsData.operational_hours : current.operational_hours, "08.00 — 21.00 WIB"),
+    delivery_area: safeStr(settingsData.delivery_area !== undefined ? settingsData.delivery_area : current.delivery_area, "Jabodetabek & Sekitarnya"),
+    strip_announcement: safeStr(settingsData.strip_announcement !== undefined ? settingsData.strip_announcement : current.strip_announcement, "100% Ikan Tenggiri • Fresh Setiap Hari"),
+    logo_url: safeStr(settingsData.logo_url || current.logo_url, "/images/logo.png"),
+    favicon_url: safeStr(settingsData.favicon_url || current.favicon_url, "/favicon.png")
   };
 
   const corePayload = {
     id: 1,
-    brand_name: settingsData.brand_name || current.brand_name || "Siomay Online",
+    brand_name: safeStr(settingsData.brand_name || current.brand_name, "Siomay Online"),
     whatsapp_number: cleanWhatsApp || "6281234567890",
-    default_order_message: (settingsData.default_order_message !== undefined ? settingsData.default_order_message : current.default_order_message || "").trim(),
-    hero_title: (settingsData.hero_title !== undefined ? settingsData.hero_title : current.hero_title || "").trim(),
-    hero_subtitle: (settingsData.hero_subtitle !== undefined ? settingsData.hero_subtitle : current.hero_subtitle || "").trim(),
-    hero_badge: (settingsData.hero_badge !== undefined ? settingsData.hero_badge : current.hero_badge || "SIOMAY ONLINE").trim(),
-    hero_cta_text: (settingsData.hero_cta_text !== undefined ? settingsData.hero_cta_text : current.hero_cta_text || "Pesan via WhatsApp").trim(),
+    default_order_message: safeStr(settingsData.default_order_message !== undefined ? settingsData.default_order_message : current.default_order_message, ""),
+    hero_title: safeStr(settingsData.hero_title !== undefined ? settingsData.hero_title : current.hero_title, ""),
+    hero_subtitle: safeStr(settingsData.hero_subtitle !== undefined ? settingsData.hero_subtitle : current.hero_subtitle, ""),
+    hero_badge: safeStr(settingsData.hero_badge !== undefined ? settingsData.hero_badge : current.hero_badge, "SIOMAY ONLINE"),
+    hero_cta_text: safeStr(settingsData.hero_cta_text !== undefined ? settingsData.hero_cta_text : current.hero_cta_text, "Pesan via WhatsApp"),
     hero_cta_url: `__OP_CONFIG__${JSON.stringify(opConfig)}`,
-    hero_image_url: settingsData.hero_image_url || current.hero_image_url || "/images/hero.jpg",
-    promo_video_url: (settingsData.promo_video_url !== undefined ? settingsData.promo_video_url : current.promo_video_url || "").trim() || null,
-    promo_video_poster_url: (settingsData.promo_video_poster_url !== undefined ? settingsData.promo_video_poster_url : current.promo_video_poster_url || "").trim() || null,
+    hero_image_url: safeStr(settingsData.hero_image_url || current.hero_image_url, "/images/hero.jpg"),
+    promo_video_url: safeStr(settingsData.promo_video_url !== undefined ? settingsData.promo_video_url : current.promo_video_url, "") || null,
+    promo_video_poster_url: safeStr(settingsData.promo_video_poster_url !== undefined ? settingsData.promo_video_poster_url : current.promo_video_poster_url, "") || null,
     updated_at: new Date().toISOString()
   };
 
