@@ -455,6 +455,18 @@ async function syncPublicWebsiteFromBackend() {
       if (footerAreaVal && s.delivery_area) {
         footerAreaVal.textContent = s.delivery_area;
       }
+
+      // D. Branding (Website Logo & Browser Favicon)
+      if (s.logo_url) {
+        document.querySelectorAll(".brand-logo-img").forEach(img => {
+          img.src = s.logo_url;
+        });
+      }
+      if (s.favicon_url) {
+        document.querySelectorAll("link[rel*='icon']").forEach(link => {
+          link.href = s.favicon_url;
+        });
+      }
     }
   } catch (err) {
     console.info("[Siomay Online] Menggunakan konten default:", err);

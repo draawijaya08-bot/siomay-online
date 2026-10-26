@@ -22,7 +22,10 @@ import {
   fetchSiteSettings, 
   updateSiteSettings, 
   uploadMediaFile,
-  testSupabaseMenuWriteAccess
+  testSupabaseMenuWriteAccess,
+  fetchCustomerOrders,
+  updateCustomerOrderStatus,
+  deleteCustomerOrder
 } from "./cmsService.js";
 import { formatReviewDate } from "./reviews.js";
 
@@ -45,6 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initOperationsHandlers();
   initWhatsAppHandlers();
   initOrdersHandlers();
+  initBrandingHandlers();
 
   // Check existing session
   await checkAuthSession();
@@ -166,9 +170,11 @@ function initSidebarNavigation() {
   const viewTitles = {
     viewOverview: "Ringkasan Dashboard",
     viewMenu: "Kelola Menu Makanan",
+    viewOrders: "Daftar Pesanan Masuk (Order Inbox)",
+    viewWhatsApp: "Pengaturan WhatsApp Toko",
+    viewBranding: "Kelola Branding, Logo & Favicon",
     viewContent: "Banner & Video Promosi",
-    viewOperations: "Pengaturan Jam Operasional & Lokasi",
-    viewWhatsApp: "Pengaturan WhatsApp & Pesanan"
+    viewOperations: "Pengaturan Jam Operasional & Lokasi Toko"
   };
 
   const switchView = (targetViewId) => {
@@ -231,7 +237,9 @@ function initSidebarNavigation() {
 
   // Quick Shortcuts on Overview
   const btnQuickAdd = document.getElementById("btnQuickAddMenu");
-  const btnQuickBanner = document.getElementById("btnQuickEditBanner");
+  const btnQuickOrders = document.getElementById("btnQuickViewOrders");
+  const btnQuickBranding = document.getElementById("btnQuickBranding");
+  const btnQuickWa = document.getElementById("btnQuickWhatsApp");
   const btnRefreshOverview = document.getElementById("btnRefreshOverview");
 
   if (btnQuickAdd) {
@@ -241,16 +249,21 @@ function initSidebarNavigation() {
     });
   }
 
-  if (btnQuickBanner) {
-    btnQuickBanner.addEventListener("click", () => {
-      switchView("viewContent");
+  if (btnQuickOrders) {
+    btnQuickOrders.addEventListener("click", () => {
+      switchView("viewOrders");
     });
   }
 
-  const btnQuickOps = document.getElementById("btnQuickEditOperations");
-  if (btnQuickOps) {
-    btnQuickOps.addEventListener("click", () => {
-      switchView("viewOperations");
+  if (btnQuickBranding) {
+    btnQuickBranding.addEventListener("click", () => {
+      switchView("viewBranding");
+    });
+  }
+
+  if (btnQuickWa) {
+    btnQuickWa.addEventListener("click", () => {
+      switchView("viewWhatsApp");
     });
   }
 
@@ -935,6 +948,23 @@ async function loadSiteSettings() {
   if (announcementInput) announcementInput.value = siteSettings.strip_announcement || "100% Ikan Tenggiri • Fresh Setiap Hari";
 
   updateOperationsPreview();
+
+  // Populate Branding Form (Logo & Favicon)
+  const logoInput = document.getElementById("settingLogoUrl");
+  const faviconInput = document.getElementById("settingFaviconUrl");
+  const logoPreview = document.getElementById("currentLogoPreview");
+  const faviconPreview = document.getElementById("currentFaviconPreview");
+  const sidebarBrandImg = document.querySelector(".cms-sidebar-brand img");
+
+  if (logoInput) logoInput.value = siteSettings.logo_url || "/images/logo.png";
+  if (logoPreview) logoPreview.src = siteSettings.logo_url || "/images/logo.png";
+  if (sidebarBrandImg && siteSettings.logo_url) sidebarBrandImg.src = siteSettings.logo_url;
+
+  if (faviconInput) faviconInput.value = siteSettings.favicon_url || "/favicon.png";
+  if (faviconPreview) faviconPreview.src = siteSettings.favicon_url || "/favicon.png";
+
+  const adminFavicon = document.querySelector("link[rel*='icon']");
+  if (adminFavicon && siteSettings.favicon_url) adminFavicon.href = siteSettings.favicon_url;
 }
 
 async function handleSaveHeroContent() {
@@ -1254,10 +1284,157 @@ async function handleSaveWhatsApp() {
   updateOverviewMetrics();
 }
 
+// =============================================================================
+// 8. BRANDING, LOGO & FAVICON SETTINGS
+// =============================================================================
+function initBrandingHandlers() {
+  const btnChooseLogo = document.getElementById("btnChooseBrandLogo");
+  const inputLogo = document.getElementById("inputBrandLogo");
+  const btnResetLogo = document.getElementById("btnResetBrandLogo");
+  const logoUrlInput = document.getElementById("settingLogoUrl");
+  const logoPreview = document.getElementById("currentLogoPreview");
 
+  const btnChooseFavicon = document.getElementById("btnChooseBrandFavicon");
+  const inputFavicon = document.getElementById("inputBrandFavicon");
+  const btnResetFavicon = document.getElementById("btnResetBrandFavicon");
+  const faviconUrlInput = document.getElementById("settingFaviconUrl");
+  const faviconPreview = document.getElementById("currentFaviconPreview");
+
+  const btnSaveTop = document.getElementById("btnSaveBranding");
+  const btnSaveBottom = document.getElementById("btnSaveBrandingBottom");
+
+  // Logo upload
+  if (btnChooseLogo && inputLogo) {
+    btnChooseLogo.addEventListener("click", () => inputLogo.click());
+  }
+
+  if (inputLogo) {
+    inputLogo.addEventListener("change", async () => {
+      const file = inputLogo.files?.[0];
+      if (!file) return;
+
+      if (btnChooseLogo) {
+        btnChooseLogo.disabled = true;
+        btnChooseLogo.innerHTML = "<span>Mengunggah Logo...</span>";
+      }
+
+      const res = await uploadMediaFile(file, "branding");
+
+      if (btnChooseLogo) {
+        btnChooseLogo.disabled = false;
+        btnChooseLogo.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Pilih Logo Baru...</span>
+        `;
+      }
+
+      if (!res.success) {
+        showToast(res.error || "Gagal mengunggah logo.", "error");
+        return;
+      }
+
+      if (logoUrlInput) logoUrlInput.value = res.url;
+      if (logoPreview) logoPreview.src = res.url;
+      showToast(res.isLocal ? "Logo baru disimpan ke buffer lokal!" : "Logo baru berhasil diunggah!", "success");
+    });
+  }
+
+  if (btnResetLogo) {
+    btnResetLogo.addEventListener("click", () => {
+      if (logoUrlInput) logoUrlInput.value = "/images/logo.png";
+      if (logoPreview) logoPreview.src = "/images/logo.png";
+      showToast("Logo direset ke logo bawaan (klik Simpan untuk menerapkan).", "info");
+    });
+  }
+
+  // Favicon upload
+  if (btnChooseFavicon && inputFavicon) {
+    btnChooseFavicon.addEventListener("click", () => inputFavicon.click());
+  }
+
+  if (inputFavicon) {
+    inputFavicon.addEventListener("change", async () => {
+      const file = inputFavicon.files?.[0];
+      if (!file) return;
+
+      if (btnChooseFavicon) {
+        btnChooseFavicon.disabled = true;
+        btnChooseFavicon.innerHTML = "<span>Mengunggah Favicon...</span>";
+      }
+
+      const res = await uploadMediaFile(file, "branding");
+
+      if (btnChooseFavicon) {
+        btnChooseFavicon.disabled = false;
+        btnChooseFavicon.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Pilih Favicon Baru...</span>
+        `;
+      }
+
+      if (!res.success) {
+        showToast(res.error || "Gagal mengunggah favicon.", "error");
+        return;
+      }
+
+      if (faviconUrlInput) faviconUrlInput.value = res.url;
+      if (faviconPreview) faviconPreview.src = res.url;
+      showToast(res.isLocal ? "Favicon disimpan ke buffer lokal!" : "Favicon berhasil diunggah!", "success");
+    });
+  }
+
+  if (btnResetFavicon) {
+    btnResetFavicon.addEventListener("click", () => {
+      if (faviconUrlInput) faviconUrlInput.value = "/favicon.png";
+      if (faviconPreview) faviconPreview.src = "/favicon.png";
+      showToast("Favicon direset ke bawaan (klik Simpan untuk menerapkan).", "info");
+    });
+  }
+
+  // Save branding action
+  const handleSaveBranding = async () => {
+    const logo_url = logoUrlInput?.value.trim() || "/images/logo.png";
+    const favicon_url = faviconUrlInput?.value.trim() || "/favicon.png";
+
+    const btns = [btnSaveTop, btnSaveBottom].filter(Boolean);
+    btns.forEach(b => {
+      b.disabled = true;
+      b.textContent = "Menyimpan Branding...";
+    });
+
+    try {
+      const res = await updateSiteSettings({
+        logo_url,
+        favicon_url
+      });
+
+      if (res.success) {
+        siteSettings = res.settings;
+        showToast("Pengaturan Logo & Favicon berhasil disimpan ke Supabase!", "success");
+        // Also update sidebar logo if present
+        const sidebarBrandImg = document.querySelector(".cms-sidebar-brand img");
+        if (sidebarBrandImg) sidebarBrandImg.src = logo_url;
+        const adminFavicon = document.querySelector("link[rel*='icon']");
+        if (adminFavicon) adminFavicon.href = favicon_url;
+      } else {
+        showToast("Gagal menyimpan branding: " + (res.error || "Terjadi kesalahan"), "error");
+      }
+    } catch (err) {
+      showToast("Terjadi kendala saat menyimpan: " + err.message, "error");
+    } finally {
+      btns.forEach(b => {
+        b.disabled = false;
+        b.textContent = "Simpan Perubahan Branding";
+      });
+    }
+  };
+
+  if (btnSaveTop) btnSaveTop.addEventListener("click", handleSaveBranding);
+  if (btnSaveBottom) btnSaveBottom.addEventListener("click", handleSaveBranding);
+}
 
 // =============================================================================
-// 8. TOAST NOTIFICATION & HELPER
+// 9. TOAST NOTIFICATION & HELPER
 // =============================================================================
 function showToast(message, type = "info") {
   const alertEl = document.getElementById("cmsGlobalAlert");
@@ -1283,7 +1460,7 @@ function escapeSafe(str) {
 }
 
 // =============================================================================
-// 9. CUSTOMER ORDERS MANAGEMENT (ORDER INBOX)
+// 10. CUSTOMER ORDERS MANAGEMENT (ORDER INBOX)
 // =============================================================================
 const DEFAULT_SAMPLE_ORDERS = [
   {
@@ -1372,17 +1549,22 @@ function initOrdersHandlers() {
   });
 }
 
-function loadCustomerOrders() {
+async function loadCustomerOrders() {
   const loading = document.getElementById("ordersListLoading");
   if (loading) loading.style.display = "flex";
 
   try {
-    const raw = localStorage.getItem("siomay_customer_orders");
-    if (!raw) {
-      allOrders = [...DEFAULT_SAMPLE_ORDERS];
-      localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
+    const res = await fetchCustomerOrders();
+    if (res.success && Array.isArray(res.orders) && res.orders.length > 0) {
+      allOrders = res.orders;
     } else {
-      allOrders = JSON.parse(raw);
+      const raw = localStorage.getItem("siomay_customer_orders");
+      if (!raw) {
+        allOrders = [...DEFAULT_SAMPLE_ORDERS];
+        localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
+      } else {
+        allOrders = JSON.parse(raw);
+      }
     }
   } catch (err) {
     console.warn("Gagal membaca riwayat pesanan:", err);
@@ -1524,20 +1706,22 @@ function renderCustomerOrders() {
   });
 }
 
-function updateOrderStatus(orderId, newStatus) {
+async function updateOrderStatus(orderId, newStatus) {
   const idx = allOrders.findIndex(o => o.id === orderId);
   if (idx !== -1) {
     allOrders[idx].status = newStatus;
     localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
+    await updateCustomerOrderStatus(orderId, newStatus);
     showToast(`Status pesanan ${orderId} diubah ke '${newStatus}'.`, "success");
     renderCustomerOrders();
     updateOverviewMetrics();
   }
 }
 
-function deleteOrder(orderId) {
+async function deleteOrder(orderId) {
   allOrders = allOrders.filter(o => o.id !== orderId);
   localStorage.setItem("siomay_customer_orders", JSON.stringify(allOrders));
+  await deleteCustomerOrder(orderId);
   showToast(`Pesanan ${orderId} berhasil dihapus.`, "info");
   renderCustomerOrders();
   updateOverviewMetrics();

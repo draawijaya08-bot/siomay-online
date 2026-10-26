@@ -575,7 +575,10 @@ export const DEFAULT_SITE_SETTINGS = {
   operational_days: "Setiap Hari",
   operational_hours: "10.00 — 21.00 WIB",
   delivery_area: "Klaten & Sekitarnya",
-  strip_announcement: "100% Ikan Tenggiri • Fresh Setiap Hari"
+  strip_announcement: "100% Ikan Tenggiri • Fresh Setiap Hari",
+  // Branding Logo & Favicon
+  logo_url: "/images/logo.png",
+  favicon_url: "/favicon.png"
 };
 
 let inMemorySettings = null;
@@ -669,7 +672,9 @@ export async function updateSiteSettings(settingsData) {
     operational_days: settingsData.operational_days || current.operational_days || "Setiap Hari",
     operational_hours: (settingsData.operational_hours !== undefined ? settingsData.operational_hours : current.operational_hours || "10.00 — 21.00 WIB").trim(),
     delivery_area: (settingsData.delivery_area !== undefined ? settingsData.delivery_area : current.delivery_area || "Klaten & Sekitarnya").trim(),
-    strip_announcement: (settingsData.strip_announcement !== undefined ? settingsData.strip_announcement : current.strip_announcement || "100% Ikan Tenggiri • Fresh Setiap Hari").trim()
+    strip_announcement: (settingsData.strip_announcement !== undefined ? settingsData.strip_announcement : current.strip_announcement || "100% Ikan Tenggiri • Fresh Setiap Hari").trim(),
+    logo_url: settingsData.logo_url || current.logo_url || "/images/logo.png",
+    favicon_url: settingsData.favicon_url || current.favicon_url || "/favicon.png"
   };
 
   const fullPayload = {
@@ -683,6 +688,8 @@ export async function updateSiteSettings(settingsData) {
     hero_image_url: settingsData.hero_image_url || current.hero_image_url || "/images/hero.jpg",
     promo_video_url: (settingsData.promo_video_url !== undefined ? settingsData.promo_video_url : current.promo_video_url || "").trim() || null,
     promo_video_poster_url: (settingsData.promo_video_poster_url !== undefined ? settingsData.promo_video_poster_url : current.promo_video_poster_url || "").trim() || null,
+    logo_url: settingsData.logo_url || current.logo_url || "/images/logo.png",
+    favicon_url: settingsData.favicon_url || current.favicon_url || "/favicon.png",
     hero_cta_url: `__OP_CONFIG__${JSON.stringify(opConfig)}`,
     ...opConfig,
     updated_at: new Date().toISOString()
@@ -908,4 +915,69 @@ export async function testSupabaseMenuWriteAccess() {
     return false;
   }
 }
+
+// =============================================================================
+// 6. CUSTOMER ORDERS SERVICE (Cloud DB + Local Storage Buffer)
+// =============================================================================
+
+export async function fetchCustomerOrders() {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("customer_orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("siomay_customer_orders", JSON.stringify(data));
+        }
+        return { success: true, orders: data, isLive: true };
+      }
+    } catch (err) {
+      console.warn("[CMS Orders] Supabase fetch orders notice:", err);
+    }
+  }
+
+  // Local fallback
+  try {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem("siomay_customer_orders");
+      if (raw) {
+        return { success: true, orders: JSON.parse(raw), isLocal: true };
+      }
+    }
+  } catch {}
+
+  return { success: true, orders: [], isLocal: true };
+}
+
+export async function updateCustomerOrderStatus(orderId, newStatus) {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase
+        .from("customer_orders")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", orderId);
+    } catch (err) {
+      console.warn("[CMS Orders] Supabase update status notice:", err);
+    }
+  }
+  return { success: true };
+}
+
+export async function deleteCustomerOrder(orderId) {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase
+        .from("customer_orders")
+        .delete()
+        .eq("id", orderId);
+    } catch (err) {
+      console.warn("[CMS Orders] Supabase delete order notice:", err);
+    }
+  }
+  return { success: true };
+}
+
 

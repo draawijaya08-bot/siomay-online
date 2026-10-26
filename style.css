@@ -5319,5 +5319,156 @@ ul, ol {
   line-height: 1.4;
 }
 
+/* =============================================================================
+   CMS BRANDING, LOGO & FAVICON STYLING
+   ============================================================================= */
+.cms-branding-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.branding-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.branding-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.branding-preview-stage {
+  background-color: var(--bg-surface-warm, #FAF6F0);
+  border: 1px dashed var(--border-subtle, #E4DCD3);
+  border-radius: var(--radius-md, 12px);
+  padding: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 200px;
+}
+
+.stage-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  align-self: flex-start;
+}
+
+.logo-preview-box {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(245,240,235,0.7) 100%);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 4px 16px rgba(44, 24, 16, 0.08);
+  padding: 12px;
+  transition: transform 0.2s ease;
+}
+
+.logo-preview-box:hover {
+  transform: scale(1.04);
+}
+
+.brand-preview-display {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
+}
+
+.stage-footer {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.stage-spec {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Browser Tab Simulation */
+.browser-tab-mock {
+  width: 100%;
+  max-width: 320px;
+  background-color: #E2E8F0;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 8px 0 8px;
+  margin: 16px 0;
+}
+
+.browser-tab-chrome {
+  background-color: #FFFFFF;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 -1px 3px rgba(0,0,0,0.06);
+}
+
+.favicon-preview-display {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.tab-mock-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.tab-mock-close {
+  font-size: 0.7rem;
+  color: #94A3B8;
+  cursor: default;
+}
+
+.branding-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-light, #E2E8F0);
+  color: var(--text-muted);
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  background: rgba(0,0,0,0.04);
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+
 
 
