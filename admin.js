@@ -218,7 +218,7 @@ function initSidebarNavigation() {
     viewMenu: "Kelola Menu Makanan",
     viewOrders: "Daftar Pesanan Masuk (Order Inbox)",
     viewWhatsApp: "Pengaturan WhatsApp Toko",
-    viewBranding: "Kelola Branding, Logo & Favicon",
+    viewBranding: "Brand & Favicon Logo",
     viewContent: "Banner & Video Promosi",
     viewOperations: "Pengaturan Jam Operasional & Lokasi Toko"
   };
