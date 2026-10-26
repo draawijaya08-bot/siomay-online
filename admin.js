@@ -24,15 +24,13 @@ import {
   uploadMediaFile,
   testSupabaseMenuWriteAccess
 } from "./cmsService.js";
-import { formatReviewDate, renderStarsHtml, getLocalReviews, saveLocalReviews } from "./reviews.js";
+import { formatReviewDate } from "./reviews.js";
 
 // Global CMS State
 let currentOwner = null;
 let menuItems = [];
 let isSavingMenuItem = false;
 let siteSettings = null;
-let allReviews = [];
-let currentReviewFilter = "all";
 let allOrders = [];
 let currentOrderFilter = "all";
 
@@ -46,7 +44,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   initContentHandlers();
   initOperationsHandlers();
   initWhatsAppHandlers();
-  initReviewHandlers();
   initOrdersHandlers();
 
   // Check existing session
@@ -171,8 +168,7 @@ function initSidebarNavigation() {
     viewMenu: "Kelola Menu Makanan",
     viewContent: "Banner & Video Promosi",
     viewOperations: "Pengaturan Jam Operasional & Lokasi",
-    viewWhatsApp: "Pengaturan WhatsApp & Pesanan",
-    viewReviews: "Moderasi Ulasan Pelanggan"
+    viewWhatsApp: "Pengaturan WhatsApp & Pesanan"
   };
 
   const switchView = (targetViewId) => {
@@ -273,7 +269,6 @@ async function loadAllCmsData() {
   await Promise.all([
     loadMenuItems(),
     loadSiteSettings(),
-    loadReviewsForAdmin(),
     loadCustomerOrders()
   ]);
   updateOverviewMetrics();
@@ -282,11 +277,8 @@ async function loadAllCmsData() {
 function updateOverviewMetrics() {
   const metricMenu = document.getElementById("metricTotalMenu");
   const metricWa = document.getElementById("metricWhatsApp");
-  const metricPending = document.getElementById("metricPendingReviews");
-  const metricApproved = document.getElementById("metricApprovedReviews");
   const metricOrders = document.getElementById("metricTotalOrders");
   const metricOperational = document.getElementById("metricOperationalHours");
-  const sidebarBadge = document.getElementById("sidebarPendingReviewsBadge");
   const sidebarOrdersBadge = document.getElementById("sidebarPendingOrdersBadge");
 
   if (metricMenu) metricMenu.textContent = menuItems.length;
@@ -298,23 +290,10 @@ function updateOverviewMetrics() {
     metricOperational.textContent = (siteSettings.operational_hours || "10.00 — 21.00 WIB") + area;
   }
 
-  const pendingCount = allReviews.filter(r => r.status === "pending").length;
-  const approvedCount = allReviews.filter(r => r.status === "approved").length;
   const totalOrdersCount = allOrders.length;
   const newOrdersCount = allOrders.filter(o => o.status === "baru").length;
 
-  if (metricPending) metricPending.textContent = pendingCount;
-  if (metricApproved) metricApproved.textContent = approvedCount;
   if (metricOrders) metricOrders.textContent = totalOrdersCount;
-
-  if (sidebarBadge) {
-    if (pendingCount > 0) {
-      sidebarBadge.textContent = pendingCount;
-      sidebarBadge.style.display = "inline-flex";
-    } else {
-      sidebarBadge.style.display = "none";
-    }
-  }
 
   if (sidebarOrdersBadge) {
     if (newOrdersCount > 0) {
@@ -1275,254 +1254,7 @@ async function handleSaveWhatsApp() {
   updateOverviewMetrics();
 }
 
-// =============================================================================
-// 7. CUSTOMER REVIEWS MODERATION
-// =============================================================================
-function initReviewHandlers() {
-  const btnRefresh = document.getElementById("btnRefreshReviews");
-  const btnClean = document.getElementById("btnCleanTestData");
-  const tabs = document.querySelectorAll("[data-review-filter]");
 
-  if (btnRefresh) {
-    btnRefresh.addEventListener("click", async () => {
-      await loadReviewsForAdmin();
-      showToast("Data ulasan pelanggan disegarkan.", "info");
-    });
-  }
-
-  if (btnClean) {
-    btnClean.addEventListener("click", async () => {
-      await handleCleanTestData();
-    });
-  }
-
-  tabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      tabs.forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      currentReviewFilter = tab.getAttribute("data-review-filter") || "all";
-      renderReviewsForAdmin();
-    });
-  });
-}
-
-async function handleCleanTestData() {
-  const testReviews = allReviews.filter(r => 
-    (r.display_name && r.display_name.toLowerCase().includes("test data")) ||
-    (r.display_name && r.display_name.toLowerCase().includes("(test data)"))
-  );
-
-  if (testReviews.length === 0) {
-    alert("Tidak ditemukan ulasan data tes. Semua ulasan di database adalah ulasan pelanggan asli.");
-    return;
-  }
-
-  if (!confirm(`Ditemukan ${testReviews.length} ulasan bertanda '(Test Data)'.\n\nApakah Anda ingin menghapus semua data tes ini agar dashboard hanya menampilkan ulasan asli dari pelanggan yang memesan?`)) {
-    return;
-  }
-
-  for (const r of testReviews) {
-    await deleteReviewFromDb(r.id, true);
-  }
-
-  showToast(`${testReviews.length} ulasan data tes berhasil dibersihkan!`, "success");
-  await loadReviewsForAdmin();
-}
-
-async function loadReviewsForAdmin() {
-  const loading = document.getElementById("reviewsListLoading");
-  const empty = document.getElementById("reviewsListEmpty");
-  const list = document.getElementById("cmsReviewsList");
-
-  if (loading) loading.style.display = "flex";
-  if (empty) empty.style.display = "none";
-  if (list) list.innerHTML = "";
-
-  if (!isSupabaseConfigured || !supabase) {
-    if (loading) loading.style.display = "none";
-    allReviews = getLocalReviews();
-    updateReviewCountBadges();
-    renderReviewsForAdmin();
-    updateOverviewMetrics();
-    return;
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("customer_reviews")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (loading) loading.style.display = "none";
-    if (error) throw error;
-
-    allReviews = data || [];
-    updateReviewCountBadges();
-    renderReviewsForAdmin();
-    updateOverviewMetrics();
-  } catch (err) {
-    if (loading) loading.style.display = "none";
-    console.warn("[Reviews CMS] Supabase query offline, falling back to local buffer:", err);
-    allReviews = getLocalReviews();
-    updateReviewCountBadges();
-    renderReviewsForAdmin();
-    updateOverviewMetrics();
-  }
-}
-
-function updateReviewCountBadges() {
-  const badgeAll = document.getElementById("badgeAllReviewsCount");
-  const badgePending = document.getElementById("badgePendingReviewsCount");
-  const badgeApproved = document.getElementById("badgeApprovedReviewsCount");
-  const badgeRejected = document.getElementById("badgeRejectedReviewsCount");
-
-  const pendingCount = allReviews.filter(r => r.status === "pending").length;
-  const approvedCount = allReviews.filter(r => r.status === "approved").length;
-  const rejectedCount = allReviews.filter(r => r.status === "rejected").length;
-
-  if (badgeAll) badgeAll.textContent = allReviews.length;
-  if (badgePending) badgePending.textContent = pendingCount;
-  if (badgeApproved) badgeApproved.textContent = approvedCount;
-  if (badgeRejected) badgeRejected.textContent = rejectedCount;
-}
-
-function renderReviewsForAdmin() {
-  const list = document.getElementById("cmsReviewsList");
-  const empty = document.getElementById("reviewsListEmpty");
-  if (!list) return;
-
-  list.innerHTML = "";
-
-  const filtered = allReviews.filter(r => {
-    if (currentReviewFilter === "all") return true;
-    return r.status === currentReviewFilter;
-  });
-
-  if (filtered.length === 0) {
-    if (empty) empty.style.display = "block";
-    return;
-  }
-
-  if (empty) empty.style.display = "none";
-
-  filtered.forEach(review => {
-    const card = document.createElement("div");
-    card.className = `admin-review-card status-${review.status}`;
-
-    const dateStr = formatReviewDate(review.created_at);
-    const statusLabels = {
-      pending: "Menunggu Tinjauan",
-      approved: "Disetujui (Aktif di Web)",
-      rejected: "Ditolak"
-    };
-
-    const firstLetter = (review.display_name || "P").trim().charAt(0).toUpperCase();
-
-    card.innerHTML = `
-      <div class="admin-review-header">
-        <div class="admin-customer-meta">
-          <div class="customer-avatar" aria-hidden="true">${firstLetter}</div>
-          <div>
-            <strong class="admin-customer-name">${escapeSafe(review.display_name)}</strong>
-            <span class="admin-review-date">• ${dateStr}</span>
-          </div>
-        </div>
-        <span class="status-pill pill-${review.status}">
-          ${review.status === 'pending' ? '⏳ ' : review.status === 'approved' ? '✓ ' : '✕ '}
-          ${statusLabels[review.status] || review.status}
-        </span>
-      </div>
-      <div class="admin-rating-row">
-        <div>${renderStarsHtml(review.rating)}</div>
-        ${review.menu_item_name ? `<span class="admin-menu-tag">${escapeSafe(review.menu_item_name)}</span>` : ''}
-      </div>
-      <p class="admin-comment-text">${escapeSafe(review.comment)}</p>
-      <div class="admin-actions-row">
-        ${review.status !== 'approved' ? `<button type="button" class="btn btn-sm btn-approve" data-act="approve" data-id="${review.id}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> <span>Setujui</span></button>` : ''}
-        ${review.status !== 'rejected' ? `<button type="button" class="btn btn-sm btn-reject" data-act="reject" data-id="${review.id}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> <span>Tolak</span></button>` : ''}
-        <button type="button" class="btn btn-sm btn-delete" data-act="delete" data-id="${review.id}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>Hapus</span></button>
-      </div>
-    `;
-
-    // Bind action buttons
-    const btnApprove = card.querySelector('[data-act="approve"]');
-    const btnReject = card.querySelector('[data-act="reject"]');
-    const btnDelete = card.querySelector('[data-act="delete"]');
-
-    if (btnApprove) {
-      btnApprove.addEventListener("click", async () => {
-        await updateReviewModerationStatus(review.id, "approved");
-      });
-    }
-
-    if (btnReject) {
-      btnReject.addEventListener("click", async () => {
-        await updateReviewModerationStatus(review.id, "rejected");
-      });
-    }
-
-    if (btnDelete) {
-      btnDelete.addEventListener("click", async () => {
-        if (confirm("Hapus ulasan ini secara permanen dari database?")) {
-          await deleteReviewFromDb(review.id);
-        }
-      });
-    }
-
-    list.appendChild(card);
-  });
-}
-
-async function updateReviewModerationStatus(id, newStatus) {
-  // Always update in local reviews buffer
-  const localList = getLocalReviews();
-  const idx = localList.findIndex(r => r.id === id);
-  if (idx !== -1) {
-    localList[idx].status = newStatus;
-    saveLocalReviews(localList);
-  }
-
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const { error } = await supabase
-        .from("customer_reviews")
-        .update({ status: newStatus })
-        .eq("id", id);
-
-      if (error) console.warn("[Reviews CMS] Supabase update warning:", error);
-    } catch (err) {
-      console.warn("[Reviews CMS] Supabase update error:", err);
-    }
-  }
-
-  showToast(`Status ulasan berhasil diubah menjadi '${newStatus}'.`, "success");
-  await loadReviewsForAdmin();
-}
-
-async function deleteReviewFromDb(id, silent = false) {
-  // Always delete from local reviews buffer
-  let localList = getLocalReviews();
-  localList = localList.filter(r => r.id !== id);
-  saveLocalReviews(localList);
-
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const { error } = await supabase
-        .from("customer_reviews")
-        .delete()
-        .eq("id", id);
-
-      if (error) console.warn("[Reviews CMS] Supabase delete warning:", error);
-    } catch (err) {
-      console.warn("[Reviews CMS] Supabase delete error:", err);
-    }
-  }
-
-  if (!silent) {
-    showToast("Ulasan berhasil dihapus.", "success");
-    await loadReviewsForAdmin();
-  }
-}
 
 // =============================================================================
 // 8. TOAST NOTIFICATION & HELPER

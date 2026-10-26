@@ -64,7 +64,7 @@ console.log("\nTest 2: admin.html Complete CMS Dashboard Views Verification...")
   assert.ok(html.includes('data-target-view="viewContent"'), "Contains Content/Banner nav tab");
   assert.ok(html.includes('data-target-view="viewOperations"'), "Contains Operations/Hours nav tab");
   assert.ok(html.includes('data-target-view="viewWhatsApp"'), "Contains WhatsApp nav tab");
-  assert.ok(html.includes('data-target-view="viewReviews"'), "Contains Reviews nav tab");
+  assert.ok(!html.includes('data-target-view="viewReviews"'), "Reviews moderation tab cleanly removed from admin CMS");
 
   // Management Views
   assert.ok(html.includes('id="viewMenu"'), "Contains Menu management view");
@@ -74,7 +74,7 @@ console.log("\nTest 2: admin.html Complete CMS Dashboard Views Verification...")
   assert.ok(html.includes('id="settingOperationalStatus"'), "Contains store status dropdown");
   assert.ok(html.includes('id="settingDeliveryArea"'), "Contains delivery area input");
   assert.ok(html.includes('id="viewWhatsApp"'), "Contains WhatsApp settings view");
-  assert.ok(html.includes('id="viewReviews"'), "Contains Reviews moderation view");
+  assert.ok(!html.includes('id="viewReviews"'), "Reviews moderation view cleanly removed from admin CMS");
 
   // Production Owner Login Form (No 1-Click Demo for Client Security)
   assert.ok(html.includes('id="ownerEmail"'), "Contains Owner Email input field");
@@ -83,7 +83,7 @@ console.log("\nTest 2: admin.html Complete CMS Dashboard Views Verification...")
   assert.ok(!html.includes('id="btnQuickDemoLogin"'), "1-Click demo login button is removed for client security");
   assert.ok(!html.includes('cms-demo-box'), "Demo credentials box is completely removed");
 
-  console.log("✓ admin.html contains all 6 required CMS management views and clean production login form.");
+  console.log("✓ admin.html contains all 5 required CMS management views and clean production login form.");
 }
 
 // -----------------------------------------------------------------------------

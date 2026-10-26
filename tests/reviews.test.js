@@ -6,7 +6,15 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { formatReviewDate, escapeHtml, renderStarsHtml, submitCustomerReview, fetchApprovedReviews } from "../reviews.js";
+import { 
+  formatReviewDate, 
+  escapeHtml, 
+  renderStarsHtml, 
+  submitCustomerReview, 
+  fetchApprovedReviews,
+  deleteCustomerReview,
+  isMyReview
+} from "../reviews.js";
 
 console.log("=== RUNNING SIOMAY ONLINE CUSTOMER REVIEWS TEST SUITE ===\n");
 
@@ -132,28 +140,28 @@ console.log("\nTest 5: index.html Structure & Accessibility Attributes...");
 }
 
 // -----------------------------------------------------------------------------
-// Test 6: Admin Dashboard Structure in admin.html
+// Test 6: Admin Dashboard Reviews Removal
 // -----------------------------------------------------------------------------
-console.log("\nTest 6: admin.html Moderation Interface Structure...");
+console.log("\nTest 6: Admin Reviews Moderation Removal Verification...");
 {
   const adminHtmlPath = path.resolve(import.meta.dirname, "../admin.html");
   assert.ok(fs.existsSync(adminHtmlPath), "admin.html exists");
   const adminHtml = fs.readFileSync(adminHtmlPath, "utf-8");
 
-  assert.ok(adminHtml.includes("Moderasi Ulasan Pelanggan"), "Admin reviews title present");
-  assert.ok(adminHtml.includes('data-review-filter="pending"'), "Pending filter tab present");
-  assert.ok(adminHtml.includes('data-review-filter="approved"'), "Approved filter tab present");
-  assert.ok(adminHtml.includes('id="cmsReviewsList"'), "Admin reviews list container present");
+  // Per user specification: reviews must be removed from admin dashboard
+  assert.ok(!adminHtml.includes('data-target-view="viewReviews"'), "Reviews navigation tab removed from admin sidebar");
+  assert.ok(!adminHtml.includes('id="viewReviews"'), "Reviews moderation section removed from admin views");
+  assert.ok(!adminHtml.includes('id="cmsReviewsList"'), "Admin reviews list container removed");
 
-  console.log("✓ admin.html contains all moderation metrics, filter tabs, and list containers.");
+  console.log("✓ Reviews moderation cleanly removed from admin dashboard per specification.");
 }
 
 // -----------------------------------------------------------------------------
-// Test 7: Review Submission Logic & Offline Resilience
+// Test 7: Review Submission Logic, Instant Publishing & Self-Deletion
 // -----------------------------------------------------------------------------
-console.log("\nTest 7: Customer Review Submission & Offline Dual-Mode Buffer...");
+console.log("\nTest 7: Direct Customer Review Publishing & Customer Self-Deletion...");
 {
-  // 1. Valid customer submission
+  // 1. Valid customer submission (must be directly approved, no pending state!)
   const resValid = await submitCustomerReview({
     displayName: "Caca",
     rating: 5,
@@ -162,8 +170,17 @@ console.log("\nTest 7: Customer Review Submission & Offline Dual-Mode Buffer..."
   });
   assert.equal(resValid.success, true, "Review submission must succeed even without Supabase credentials");
   assert.ok(resValid.message.includes("berhasil"), "Success message returned");
+  assert.equal(resValid.review.status, "approved", "Review must be directly approved without admin intervention");
 
-  // 2. Validation: Name too short
+  // 2. Customer ownership tracking
+  assert.equal(isMyReview(resValid.review.id), true, "Customer can identify their own created review");
+
+  // 3. Customer self-deletion (e.g. if typo/salah kata)
+  const resDelete = await deleteCustomerReview(resValid.review.id);
+  assert.equal(resDelete.success, true, "Customer can delete their own review");
+  assert.equal(isMyReview(resValid.review.id), false, "Deleted review is no longer in customer's review list");
+
+  // 4. Validation: Name too short
   const resBadName = await submitCustomerReview({
     displayName: "A",
     rating: 5,
@@ -171,7 +188,7 @@ console.log("\nTest 7: Customer Review Submission & Offline Dual-Mode Buffer..."
   });
   assert.equal(resBadName.success, false, "Must reject name with fewer than 2 characters");
 
-  // 3. Validation: Comment too short (< 10 chars)
+  // 5. Validation: Comment too short (< 10 chars)
   const resShortComment = await submitCustomerReview({
     displayName: "Caca",
     rating: 5,
@@ -179,7 +196,7 @@ console.log("\nTest 7: Customer Review Submission & Offline Dual-Mode Buffer..."
   });
   assert.equal(resShortComment.success, false, "Must reject comment with fewer than 10 characters");
 
-  // 4. Anti-spam honeypot
+  // 6. Anti-spam honeypot
   const resSpambot = await submitCustomerReview({
     displayName: "SpamBot",
     rating: 5,
@@ -188,13 +205,13 @@ console.log("\nTest 7: Customer Review Submission & Offline Dual-Mode Buffer..."
   });
   assert.equal(resSpambot.success, true, "Spambot is deceived silently without error");
 
-  // 5. Fetch approved reviews fallback
+  // 7. Fetch approved reviews fallback
   const fetchRes = await fetchApprovedReviews({ page: 1, pageSize: 6 });
   assert.equal(fetchRes.success, true, "Fetching approved reviews returns valid fallback");
   assert.ok(fetchRes.reviews.length > 0, "Approved reviews list is populated");
   assert.ok(fetchRes.averageRating >= 4.0, "Average rating is calculated");
 
-  console.log("✓ Customer reviews submission and offline resilience work with 100% reliability.");
+  console.log("✓ Customer reviews direct publishing and self-deletion work with 100% reliability.");
 }
 
 console.log("\n=======================================================");

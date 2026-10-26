@@ -81,7 +81,7 @@ const DEFAULT_SEED_REVIEWS = [
     comment: "Siomay kentangnya sangat lembut dan enak, bumbu kacangnya gurih legit bikin nagih!",
     menu_item_id: "siomay-komplit",
     menu_item_name: "Siomay Komplit",
-    status: "pending",
+    status: "approved",
     created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString()
   },
   {
@@ -140,6 +140,71 @@ export function saveLocalReviews(reviews) {
   } catch (err) {
     console.warn("Gagal menyimpan ulasan ke local buffer:", err);
   }
+}
+
+// Key for storing reviews created on this client/browser
+const USER_REVIEWS_STORAGE_KEY = "siomay_my_reviews_v1";
+let memoryUserReviewIds = [];
+
+/**
+ * Get IDs of reviews authored by this browser
+ */
+export function getMyReviewIds() {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") {
+    return [...memoryUserReviewIds];
+  }
+  try {
+    const raw = localStorage.getItem(USER_REVIEWS_STORAGE_KEY);
+    if (!raw) return [...memoryUserReviewIds];
+    const parsed = JSON.parse(raw);
+    const combined = Array.isArray(parsed) ? parsed : [];
+    return Array.from(new Set([...combined, ...memoryUserReviewIds]));
+  } catch {
+    return [...memoryUserReviewIds];
+  }
+}
+
+/**
+ * Save an ID to the list of authored reviews
+ */
+export function saveMyReviewId(reviewId) {
+  if (!reviewId) return;
+  if (!memoryUserReviewIds.includes(reviewId)) {
+    memoryUserReviewIds.push(reviewId);
+  }
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+  try {
+    const ids = getMyReviewIds();
+    if (!ids.includes(reviewId)) {
+      ids.push(reviewId);
+    }
+    localStorage.setItem(USER_REVIEWS_STORAGE_KEY, JSON.stringify(ids));
+  } catch (err) {
+    console.warn("Gagal menyimpan author review id:", err);
+  }
+}
+
+/**
+ * Remove an ID from the authored reviews list
+ */
+export function removeMyReviewId(reviewId) {
+  if (!reviewId) return;
+  memoryUserReviewIds = memoryUserReviewIds.filter(id => id !== reviewId);
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+  try {
+    const ids = getMyReviewIds().filter(id => id !== reviewId);
+    localStorage.setItem(USER_REVIEWS_STORAGE_KEY, JSON.stringify(ids));
+  } catch (err) {
+    console.warn("Gagal menghapus author review id:", err);
+  }
+}
+
+/**
+ * Check if a review was authored by this customer
+ */
+export function isMyReview(reviewId) {
+  if (!reviewId) return false;
+  return getMyReviewIds().includes(reviewId);
 }
 
 /**
@@ -224,7 +289,7 @@ export async function fetchApprovedReviews({ page = 1, pageSize = 6 } = {}) {
 }
 
 /**
- * Submit a new customer review (Strictly saved as 'pending' for admin moderation)
+ * Submit a new customer review (Directly approved and visible on public website)
  */
 export async function submitCustomerReview({
   displayName,
@@ -238,17 +303,17 @@ export async function submitCustomerReview({
     // Silently treat as success to deceive spambots without saving
     return {
       success: true,
-      message: "Ulasan berhasil dikirim. Terima kasih atas masukan kamu!"
+      message: "Ulasan berhasil dikirim dan langsung tampil di website!"
     };
   }
 
-  // 2. Anti-spam client-side rate limit cooldown
+  // 2. Anti-spam client-side rate limit cooldown (15 seconds)
   try {
     const lastSubmit = sessionStorage.getItem(COOLDOWN_KEY);
     if (lastSubmit) {
       const elapsed = Date.now() - parseInt(lastSubmit, 10);
-      if (elapsed < SUBMISSION_COOLDOWN_MS) {
-        const remainingSeconds = Math.ceil((SUBMISSION_COOLDOWN_MS - elapsed) / 1000);
+      if (elapsed < 15000) {
+        const remainingSeconds = Math.ceil((15000 - elapsed) / 1000);
         return {
           success: false,
           error: `Mohon tunggu ${remainingSeconds} detik sebelum mengirim ulasan kembali.`
@@ -293,17 +358,52 @@ export async function submitCustomerReview({
     }
   }
 
-  // 4. Persistence
+  // 4. Persistence with DIRECT 'approved' status
+  let savedId = "00000000-0000-0000-0000-" + Date.now().toString(16).padStart(12, "0");
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    try {
+      savedId = crypto.randomUUID();
+    } catch {
+      // keep fallback
+    }
+  }
+
   const payload = {
-    id: "00000000-0000-0000-0000-" + Date.now().toString(16).padStart(12, "0"),
+    id: savedId,
     display_name: cleanName,
     rating: cleanRating,
     comment: cleanComment,
     menu_item_id: cleanMenuItemId,
     menu_item_name: cleanMenuItemName,
-    status: "pending", // Enforced: ALWAYS pending moderation
+    status: "approved", // Directly approved, no admin moderation needed
     created_at: new Date().toISOString()
   };
+
+  // If Supabase is connected, persist directly to customer_reviews
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("customer_reviews")
+        .insert([{
+          display_name: cleanName,
+          rating: cleanRating,
+          comment: cleanComment,
+          menu_item_id: cleanMenuItemId,
+          menu_item_name: cleanMenuItemName,
+          status: "approved"
+        }])
+        .select();
+
+      if (!error && Array.isArray(data) && data.length > 0 && data[0].id) {
+        savedId = data[0].id;
+        payload.id = savedId;
+      } else if (error) {
+        console.warn("[Reviews] Supabase save warning (fallback saved locally):", error);
+      }
+    } catch (err) {
+      console.warn("[Reviews] Supabase network offline (fallback saved locally):", err);
+    }
+  }
 
   // Always save to local persistence buffer
   try {
@@ -314,27 +414,8 @@ export async function submitCustomerReview({
     console.warn("Gagal simpan ke buffer lokal:", err);
   }
 
-  // If Supabase is connected, persist directly to customer_reviews
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const { error } = await supabase
-        .from("customer_reviews")
-        .insert([{
-          display_name: cleanName,
-          rating: cleanRating,
-          comment: cleanComment,
-          menu_item_id: cleanMenuItemId,
-          menu_item_name: cleanMenuItemName,
-          status: "pending"
-        }]);
-
-      if (error) {
-        console.warn("[Reviews] Supabase save warning (fallback saved locally):", error);
-      }
-    } catch (err) {
-      console.warn("[Reviews] Supabase network offline (fallback saved locally):", err);
-    }
-  }
+  // Record ownership so author can delete their review if needed
+  saveMyReviewId(savedId);
 
   // Set cooldown timestamp
   try {
@@ -345,7 +426,50 @@ export async function submitCustomerReview({
 
   return {
     success: true,
-    message: "Ulasan berhasil dikirim! Ulasan kamu akan segera ditinjau dan ditampilkan di halaman ini."
+    review: payload,
+    message: "Ulasan berhasil dikirim dan langsung tampil di website!"
+  };
+}
+
+/**
+ * Delete a customer review (Self-deletion by the customer or local purge)
+ */
+export async function deleteCustomerReview(reviewId) {
+  if (!reviewId) {
+    return { success: false, error: "ID ulasan tidak valid." };
+  }
+
+  // 1. Remove from local persistence buffer
+  try {
+    let localList = getLocalReviews();
+    localList = localList.filter(r => r.id !== reviewId);
+    saveLocalReviews(localList);
+  } catch (err) {
+    console.warn("Gagal menghapus dari local buffer:", err);
+  }
+
+  // 2. Remove from authored reviews tracker
+  removeMyReviewId(reviewId);
+
+  // 3. Delete from Supabase if connected
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from("customer_reviews")
+        .delete()
+        .eq("id", reviewId);
+
+      if (error) {
+        console.warn("[Reviews] Supabase delete warning:", error);
+      }
+    } catch (err) {
+      console.warn("[Reviews] Supabase network error on delete:", err);
+    }
+  }
+
+  return {
+    success: true,
+    message: "Ulasan berhasil dihapus."
   };
 }
 
@@ -518,14 +642,17 @@ function renderReviewCards(reviews) {
   if (!grid) return;
 
   grid.innerHTML = "";
+  const myReviewIds = getMyReviewIds();
 
   reviews.forEach((review, index) => {
+    const isMine = myReviewIds.includes(review.id);
     const card = document.createElement("article");
     card.className = "review-card reveal-on-scroll";
+    if (isMine) card.classList.add("review-card-mine");
     if (index % 3 === 1) card.classList.add("delay-1");
     if (index % 3 === 2) card.classList.add("delay-2");
 
-    // Top Row: Star Rating & Verified Badge
+    // Top Row: Star Rating & Badges
     const topRow = document.createElement("div");
     topRow.className = "review-card-top";
 
@@ -533,12 +660,23 @@ function renderReviewCards(reviews) {
     starsWrap.className = "review-stars";
     starsWrap.innerHTML = renderStarsHtml(review.rating);
 
+    const badgesWrap = document.createElement("div");
+    badgesWrap.className = "review-top-badges";
+
     const verifiedBadge = document.createElement("span");
     verifiedBadge.className = "review-verified-badge";
     verifiedBadge.innerHTML = `<span class="badge-icon">✓</span> Terverifikasi`;
+    badgesWrap.appendChild(verifiedBadge);
+
+    if (isMine) {
+      const ownBadge = document.createElement("span");
+      ownBadge.className = "review-own-badge";
+      ownBadge.textContent = "Ulasan Kamu";
+      badgesWrap.appendChild(ownBadge);
+    }
 
     topRow.appendChild(starsWrap);
-    topRow.appendChild(verifiedBadge);
+    topRow.appendChild(badgesWrap);
 
     // Optional Menu Item Badge
     let menuBadge = null;
@@ -553,7 +691,7 @@ function renderReviewCards(reviews) {
     quoteEl.className = "review-comment";
     quoteEl.textContent = review.comment; // Safe textContent!
 
-    // Bottom Row: Author details
+    // Bottom Row: Author details & Actions
     const authorWrap = document.createElement("div");
     authorWrap.className = "review-author";
 
@@ -579,6 +717,39 @@ function renderReviewCards(reviews) {
 
     authorWrap.appendChild(avatar);
     authorWrap.appendChild(authorInfo);
+
+    // If authored by this user/browser, provide a direct delete button
+    if (isMine) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "btn-delete-my-review";
+      deleteBtn.setAttribute("aria-label", "Hapus ulasan saya");
+      deleteBtn.title = "Hapus ulasan ini (misal jika ada kesalahan kata)";
+      deleteBtn.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        <span>Hapus</span>
+      `;
+
+      deleteBtn.addEventListener("click", async () => {
+        const confirmed = window.confirm("Apakah kamu ingin menghapus ulasan ini? Kamu bisa menulis ulasan baru yang sudah diperbaiki.");
+        if (!confirmed) return;
+
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = "Menghapus...";
+
+        const delRes = await deleteCustomerReview(review.id);
+        if (delRes.success) {
+          showPublicReviewToast("Ulasan berhasil dihapus. Kamu dapat menulis ulasan baru kapan saja.");
+          await loadApprovedReviews(1, false);
+        } else {
+          alert("Gagal menghapus ulasan: " + (delRes.error || "Terjadi kesalahan"));
+          deleteBtn.disabled = false;
+          deleteBtn.innerHTML = `<span>Hapus</span>`;
+        }
+      });
+
+      authorWrap.appendChild(deleteBtn);
+    }
 
     // Assemble Card
     card.appendChild(topRow);
@@ -882,15 +1053,59 @@ async function handleReviewFormSubmit() {
   const labelEl = document.getElementById("starRatingLabel");
   if (labelEl) labelEl.textContent = RATING_LABELS[5];
 
+  // Refresh the reviews immediately so the new review is shown right away!
+  await loadApprovedReviews(1, false);
+
   // Show inline success view inside modal
   if (formElement) formElement.style.display = "none";
   if (successState) {
     successState.style.display = "block";
     const msgEl = document.getElementById("reviewSuccessMessage");
     if (msgEl) {
-      msgEl.textContent = res.message;
+      msgEl.textContent = "Ulasanmu berhasil dikirim dan langsung tampil di halaman ini! Kamu juga dapat menghapusnya jika ada kesalahan kata.";
     }
   }
+
+  const closeSuccessBtn = document.getElementById("btnCloseReviewSuccess");
+  if (closeSuccessBtn) {
+    closeSuccessBtn.onclick = () => {
+      closeReviewModal();
+      const ulasanSection = document.getElementById("ulasan");
+      if (ulasanSection) {
+        ulasanSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+  }
+}
+
+/**
+ * Show a lightweight, modern floating toast on the main page
+ */
+export function showPublicReviewToast(message, type = "success") {
+  if (typeof document === "undefined") return;
+
+  let toast = document.getElementById("publicReviewToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "publicReviewToast";
+    toast.className = "public-review-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = message;
+  toast.classList.remove("show", "error", "success");
+  toast.classList.add(type === "error" ? "error" : "success");
+
+  // Force reflow
+  void toast.offsetWidth;
+  toast.classList.add("show");
+
+  if (toast._timer) clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 4000);
 }
 
 function showReviewAlert(message) {

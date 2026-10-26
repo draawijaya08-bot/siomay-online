@@ -16,7 +16,7 @@ Admin CMS Siomay Online dirancang sebagai panel manajemen terpadu yang aman, mod
   2. **Food Menu Management (CRUD)**: Tambah menu baru, edit nama/harga/porsi/deskripsi, toggle ketersediaan (tersedia/habis), highlight best seller, dan upload foto makanan.
   3. **Banner & Konten Promosi**: Ubah headline hero banner, subheadline, teks CTA, unggah foto hero banner baru, serta sematkan video promosi (MP4/WebM).
   4. **Pengaturan WhatsApp & Pesanan**: Ubah nomor WhatsApp resmi toko dengan normalisasi otomatis dan pratinjau link pemesanan dinamis.
-  5. **Moderasi Ulasan Pelanggan**: Tinjau ulasan masuk dari website publik, setujui (*approve*), tolak (*reject*), atau hapus permanen.
+  5. **Ulasan Pelanggan Langsung**: Ulasan yang dibuat pelanggan di website utama langsung tampil secara instan tanpa perlu konfirmasi admin, dan pelanggan dapat menghapus ulasan mereka sendiri secara mandiri jika ada salah kata.
 
 ---
 
@@ -25,6 +25,7 @@ Admin CMS Siomay Online dirancang sebagai panel manajemen terpadu yang aman, mod
 File migrasi database tersedia di:
 - Skema Utama CMS: [`supabase/migrations/20261024_complete_admin_cms.sql`](file:///d:/siomay%20online/supabase/migrations/20261024_complete_admin_cms.sql)
 - Skema Ulasan Pelanggan: [`supabase/migrations/20261024_customer_reviews.sql`](file:///d:/siomay%20online/supabase/migrations/20261024_customer_reviews.sql)
+- Skema Ulasan Langsung & Hapus Mandiri: [`supabase/migrations/20261026_direct_customer_reviews.sql`](file:///d:/siomay%20online/supabase/migrations/20261026_direct_customer_reviews.sql)
 
 ### A. Tabel `admin_users` (Otorisasi Pemilik)
 | Kolom | Tipe Data | Keterangan |
@@ -132,7 +133,7 @@ Untuk mengakses dashboard CMS, masukkan kredensial akun owner:
 2. Anda akan diarahkan ke halaman login pemilik.
 3. Masukkan Email dan Kata Sandi owner, lalu klik **Masuk ke Dashboard →**.
 4. Masuk ke Dashboard CMS:
-   - **Ringkasan**: Melihat statistik total menu, kontak WhatsApp, serta ulasan masuk.
+   - **Ringkasan**: Melihat statistik total menu, kontak WhatsApp, serta pesanan masuk.
    - **Kelola Menu**:
      - Klik **+ Tambah Menu Baru** untuk menambah produk.
      - Klik tombol **Pilih Foto Baru** untuk mengunggah gambar produk (otomatis terhubung ke Supabase Storage, atau ke buffer Base64 Data URL jika Supabase belum terhubung).
@@ -147,10 +148,8 @@ Untuk mengakses dashboard CMS, masukkan kredensial akun owner:
    - **WhatsApp & Pesanan**:
      - Perbarui nomor WhatsApp pemesanan toko.
      - Uji coba link WhatsApp langsung dari tombol preview.
+     - Pantau dan kelola status pesanan masuk di Order Inbox.
      - Klik **Simpan Nomor WhatsApp**. Perubahan nomor akan langsung aktif di seluruh tombol pemesanan dan checkout keranjang belanja website publik!
-   - **Ulasan Pelanggan**:
-     - Memoderasi ulasan yang dikirim pembeli dari beranda publik.
-     - Klik **Setujui** agar ulasan tampil di beranda, **Tolak**, atau **Hapus**.
 5. Klik **Keluar** di bagian bawah sidebar untuk mengakhiri sesi admin.
 
 ---

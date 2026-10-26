@@ -1065,7 +1065,7 @@
     <div class="review-modal-header">
       <div>
         <h2 class="review-modal-title" id="reviewModalTitle">Tulis Ulasan Kamu</h2>
-        <p class="review-modal-subtitle">Bagikan pengalamanmu menikmati Siomay Online</p>
+        <p class="review-modal-subtitle" id="reviewModalSubtitle">Bagikan pengalamanmu menikmati Siomay Online</p>
       </div>
       <button type="button" class="review-modal-close" id="closeReviewModalBtn" aria-label="Tutup form ulasan">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -1078,6 +1078,7 @@
 
       <!-- Main Review Submission Form -->
       <form id="reviewForm" class="review-submission-form" onsubmit="return false;" novalidate>
+        <input type="hidden" id="editingReviewId" value="">
         
         <!-- 1. Interactive Star Rating -->
         <div class="form-group">
@@ -1140,17 +1141,17 @@
           <input type="text" id="reviewHoneypot" name="website_url" tabindex="-1" autocomplete="off">
         </div>
 
-        <!-- Moderation Notice -->
+        <!-- Direct Publishing Notice -->
         <div class="review-moderation-notice">
-          <span class="notice-icon" aria-hidden="true">ℹ️</span>
-          <span>Ulasan kamu akan ditinjau oleh tim kami sebelum ditampilkan di website.</span>
+          <span class="notice-icon" aria-hidden="true">⚡</span>
+          <span>Ulasan kamu langsung tampil di website! Kamu juga bisa mengedit atau menghapusnya jika ada salah kata.</span>
         </div>
 
         <!-- Form Actions -->
         <div class="review-form-actions">
           <button type="button" class="btn btn-secondary btn-sm" id="btnCancelReview">Batal</button>
           <button type="submit" class="btn btn-primary btn-submit-review" id="btnSubmitReview">
-            <span>Kirim Ulasan</span>
+            <span id="btnSubmitReviewText">Kirim Ulasan</span>
           </button>
         </div>
       </form>
@@ -1162,10 +1163,10 @@
         </div>
         <h3 class="success-title">Ulasan Berhasil Dikirim!</h3>
         <p class="success-desc" id="reviewSuccessMessage">
-          Terima kasih telah berbagi pengalamanmu. Ulasanmu akan segera ditinjau oleh admin dan ditampilkan di halaman ini.
+          Terima kasih telah berbagi pengalamanmu! Ulasan kamu sudah langsung tampil di website. Jika ada kesalahan kata, kamu dapat menghapusnya langsung melalui tombol hapus pada ulasanmu.
         </p>
         <button type="button" class="btn btn-primary btn-full" id="btnCloseReviewSuccess">
-          <span>Tutup</span>
+          <span>Lihat Ulasan Saya →</span>
         </button>
       </div>
     </div>

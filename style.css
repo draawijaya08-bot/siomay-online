@@ -900,6 +900,7 @@ ul, ol {
   border-top-right-radius: calc(var(--radius-lg) - 1px);
   transform: translateZ(0);
   -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(white, black);
 }
 
 .menu-card-image {
@@ -1684,6 +1685,13 @@ ul, ol {
   color: #D6D0C5;
 }
 
+.review-top-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .review-verified-badge {
   display: inline-flex;
   align-items: center;
@@ -1698,6 +1706,143 @@ ul, ol {
 
 .review-verified-badge .badge-icon {
   font-size: 0.8rem;
+}
+
+.review-own-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary, #DE4A1D);
+  background-color: var(--primary-50, #FFF5F1);
+  border: 1px solid rgba(222, 74, 29, 0.25);
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+}
+
+.review-card.review-card-mine {
+  border-color: rgba(222, 74, 29, 0.35);
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFDFB 100%);
+  box-shadow: 0 4px 18px rgba(222, 74, 29, 0.08);
+}
+
+.review-actions-group {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-edit-my-review {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-surface-warm, #FFF8F5);
+  border: 1px solid rgba(222, 74, 29, 0.25);
+  color: var(--primary, #DE4A1D);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit-my-review:hover {
+  background-color: var(--primary, #DE4A1D);
+  color: #FFFFFF;
+  border-color: var(--primary, #DE4A1D);
+  transform: translateY(-1px);
+}
+
+.btn-edit-my-review:active {
+  transform: translateY(0);
+}
+
+.btn-delete-my-review {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--border-light, #E5E7EB);
+  color: var(--text-subtle, #6B7280);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-my-review:hover {
+  color: #DC2626;
+  background-color: #FEF2F2;
+  border-color: #FECACA;
+  transform: translateY(-1px);
+}
+
+.btn-delete-my-review:active {
+  transform: translateY(0);
+}
+
+.btn-delete-my-review:disabled,
+.btn-edit-my-review:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ensure dynamically loaded review cards are always visible */
+.reviews-grid .review-card {
+  opacity: 1 !important;
+  visibility: visible !important;
+  animation: reviewCardFadeIn 0.35s ease forwards;
+}
+
+@keyframes reviewCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Floating Toast Notification on Public Site */
+.public-review-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1F2937;
+  color: #FFFFFF;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  max-width: 90vw;
+}
+
+.public-review-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.public-review-toast.success {
+  background: #065F46;
+  border: 1px solid #10B981;
+}
+
+.public-review-toast.error {
+  background: #991B1B;
+  border: 1px solid #EF4444;
 }
 
 .review-menu-badge {
