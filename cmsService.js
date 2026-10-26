@@ -892,6 +892,26 @@ export async function uploadMediaFile(file, folder = "menu") {
 }
 
 /**
+ * Upload a Base64 Data URL directly to Supabase Storage as a PNG file,
+ * with resilient local fallback
+ */
+export async function uploadDataUrlToStorage(dataUrl, folder = "branding", filename = "ai-transparent.png") {
+  if (!dataUrl) return { success: false, error: "Tidak ada data URL" };
+  if (!dataUrl.startsWith("data:")) {
+    return { success: true, url: dataUrl };
+  }
+
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const file = new File([blob], filename, { type: "image/png" });
+    return await uploadMediaFile(file, folder);
+  } catch (err) {
+    return { success: true, url: dataUrl, isLocal: true };
+  }
+}
+
+/**
  * Check if current user has direct write access to Supabase menu_items
  */
 export async function testSupabaseMenuWriteAccess() {

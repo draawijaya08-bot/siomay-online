@@ -676,6 +676,18 @@
             </button>
           </div>
 
+          <!-- AI Studio Quick Banner -->
+          <div class="ai-branding-banner">
+            <div class="ai-banner-content">
+              <div class="ai-banner-badge">Fitur AI Bawaan</div>
+              <h3 class="ai-banner-title">AI Studio — Hapus Background Logo & Favicon Otomatis</h3>
+              <p class="ai-banner-desc">Punya foto logo atau icon dengan latar belakang putih atau warna solid? Gunakan alat AI Remove Background bawaan kami untuk menghasilkan gambar PNG transparan bersih dengan sistem persetujuan sebelum diterapkan.</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="btnLaunchAiStudioBanner">
+              <span>Buka AI Studio Remove BG</span>
+            </button>
+          </div>
+
           <div class="cms-branding-grid">
             <!-- 1. Logo Website Utama -->
             <div class="cms-card branding-card">
@@ -708,6 +720,9 @@
                 <button type="button" class="btn btn-secondary btn-sm" id="btnChooseBrandLogo">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   <span>Pilih Logo Baru...</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnOpenAiStudioLogo" title="Hapus latar belakang logo dengan AI">
+                  <span>AI Hapus Background</span>
                 </button>
                 <button type="button" class="btn btn-outline btn-sm" id="btnResetBrandLogo">
                   <span>Reset ke Logo Bawaan</span>
@@ -751,6 +766,9 @@
                 <button type="button" class="btn btn-secondary btn-sm" id="btnChooseBrandFavicon">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   <span>Pilih Favicon Baru...</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnOpenAiStudioFavicon" title="Hapus latar belakang favicon dengan AI">
+                  <span>AI Hapus Background</span>
                 </button>
                 <button type="button" class="btn btn-outline btn-sm" id="btnResetBrandFavicon">
                   <span>Reset ke Favicon Bawaan</span>
@@ -868,6 +886,139 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: AI STUDIO — SMART BACKGROUND REMOVER (REMOVE BG)
+       ======================================================================== -->
+  <div class="review-modal-overlay" id="aiStudioModalOverlay" aria-hidden="true" style="display: none;"></div>
+
+  <div 
+    class="review-modal cms-modal ai-studio-modal" 
+    id="aiStudioModal" 
+    role="dialog" 
+    aria-modal="true" 
+    aria-labelledby="aiStudioModalTitle" 
+    tabindex="-1"
+    style="display: none;"
+  >
+    <div class="review-modal-header">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="preview-badge-pill" style="background: linear-gradient(135deg, #FF6B35, #E8590C); color: #fff;">AI Studio</span>
+          <h2 class="review-modal-title" id="aiStudioModalTitle">Smart Background Remover</h2>
+        </div>
+        <p class="review-modal-subtitle">Hapus latar belakang foto logo atau favicon agar transparan bersih. Hasil memerlukan persetujuan sebelum diterapkan.</p>
+      </div>
+      <button type="button" class="review-modal-close" id="btnCloseAiStudioModal" aria-label="Tutup modal">✕</button>
+    </div>
+
+    <div class="review-modal-body">
+      <!-- File Selector Toolbar -->
+      <div class="ai-studio-toolbar">
+        <input type="file" id="aiStudioFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display: none;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnAiStudioUploadNew">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Pilih Gambar dari Komputer...</span>
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnAiStudioLoadLogo">
+          <span>Gunakan Logo Saat Ini</span>
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnAiStudioLoadFavicon">
+          <span>Gunakan Favicon Saat Ini</span>
+        </button>
+      </div>
+
+      <!-- Before & After Comparison Stage -->
+      <div class="ai-comparison-grid">
+        <!-- Panel 1: Original Image -->
+        <div class="ai-stage-col">
+          <div class="ai-stage-header">
+            <span class="stage-tag">1. Gambar Asli</span>
+            <span class="text-xs text-muted" id="aiOriginalDimensions">-</span>
+          </div>
+          <div class="ai-canvas-wrapper original-wrapper">
+            <img id="aiStudioOriginalPreview" src="" alt="Gambar Asli" class="ai-stage-img" style="display: none;">
+            <div id="aiStudioOriginalEmpty" class="ai-stage-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              <span>Belum ada gambar yang dipilih</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 2: AI Processed Transparent Preview -->
+        <div class="ai-stage-col">
+          <div class="ai-stage-header">
+            <span class="stage-tag tag-success">2. Hasil Transparan AI</span>
+            <span class="preview-badge-pill" id="aiStudioApprovalBadge" style="background: #FEF3C7; color: #92400E;">Menunggu Persetujuan</span>
+          </div>
+          <div class="ai-canvas-wrapper checker-bg" id="aiResultWrapper">
+            <canvas id="aiStudioResultCanvas" class="ai-stage-canvas" style="display: none;"></canvas>
+            <div id="aiStudioResultEmpty" class="ai-stage-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 0-20"/><circle cx="12" cy="12" r="4"/></svg>
+              <span>Hasil transparan akan tampil di sini</span>
+            </div>
+            <div id="aiStudioProcessing" class="ai-stage-loading" style="display: none;">
+              <span class="admin-spinner"></span>
+              <span>Memproses segmentasi AI...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Tuning Bar -->
+      <div class="ai-controls-card">
+        <div class="form-grid-3">
+          <div class="form-group mb-0">
+            <label for="aiSensitivityRange" class="form-label" style="display: flex; justify-content: space-between;">
+              <span>Sensitivitas AI (Toleransi)</span>
+              <strong id="aiSensitivityVal">32%</strong>
+            </label>
+            <input type="range" id="aiSensitivityRange" min="5" max="85" value="32" class="form-range" style="width: 100%;">
+            <span class="field-help">Tingkatkan jika sisa latar belakang belum hilang semua.</span>
+          </div>
+          <div class="form-group mb-0">
+            <label for="aiFeatherRange" class="form-label" style="display: flex; justify-content: space-between;">
+              <span>Kehalusan Tepi (Feather)</span>
+              <strong id="aiFeatherVal">2 px</strong>
+            </label>
+            <input type="range" id="aiFeatherRange" min="0" max="8" value="2" class="form-range" style="width: 100%;">
+            <span class="field-help">Menghaluskan lekukan tepi agar tidak bergerigi.</span>
+          </div>
+          <div class="form-group mb-0">
+            <label for="aiBgModeSelect" class="form-label">Mode Deteksi Background</label>
+            <select id="aiBgModeSelect" class="form-input form-select-sm">
+              <option value="auto">Otomatis (Deteksi Sudut &amp; Tepi)</option>
+              <option value="white">Latar Belakang Putih (#FFF)</option>
+              <option value="black">Latar Belakang Hitam (#000)</option>
+            </select>
+            <span class="field-help">Pilih mode deteksi warna latar.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mandatory Approval & Apply Box -->
+      <div class="ai-approval-notice">
+        <div class="notice-text">
+          <strong>Persetujuan Pengguna Diperlukan:</strong> Hasil AI di atas tidak akan langsung terpasang ke website publik. Silakan periksa hasil pratinjau di atas, lalu pilih persetujuan Anda:
+        </div>
+        <div class="ai-approval-buttons">
+          <button type="button" class="btn btn-primary btn-sm" id="btnApproveAiLogo" disabled>
+            <span>Setujui &amp; Pasang Sebagai Logo Website</span>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnApproveAiFavicon" disabled>
+            <span>Setujui &amp; Pasang Sebagai Favicon</span>
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" id="btnDownloadAiResult" disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Unduh PNG Transparan</span>
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" id="btnCancelAiStudio">
+            <span>Batal</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

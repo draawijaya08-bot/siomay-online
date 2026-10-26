@@ -25,7 +25,8 @@ import {
   testSupabaseMenuWriteAccess,
   fetchCustomerOrders,
   updateCustomerOrderStatus,
-  deleteCustomerOrder
+  deleteCustomerOrder,
+  uploadDataUrlToStorage
 } from "./cmsService.js";
 import { formatReviewDate } from "./reviews.js";
 
@@ -1393,8 +1394,8 @@ function initBrandingHandlers() {
 
   // Save branding action
   const handleSaveBranding = async () => {
-    const logo_url = logoUrlInput?.value.trim() || "/images/logo.png";
-    const favicon_url = faviconUrlInput?.value.trim() || "/favicon.png";
+    let logo_url = logoUrlInput?.value.trim() || "/images/logo.png";
+    let favicon_url = faviconUrlInput?.value.trim() || "/favicon.png";
 
     const btns = [btnSaveTop, btnSaveBottom].filter(Boolean);
     btns.forEach(b => {
@@ -1403,6 +1404,23 @@ function initBrandingHandlers() {
     });
 
     try {
+      // If image is a generated Base64 Data URL, try uploading to Storage CDN
+      if (logo_url.startsWith("data:image/")) {
+        const up = await uploadDataUrlToStorage(logo_url, "branding", "ai-logo.png");
+        if (up.success && up.url) {
+          logo_url = up.url;
+          if (logoUrlInput) logoUrlInput.value = logo_url;
+        }
+      }
+
+      if (favicon_url.startsWith("data:image/")) {
+        const up = await uploadDataUrlToStorage(favicon_url, "branding", "ai-favicon.png");
+        if (up.success && up.url) {
+          favicon_url = up.url;
+          if (faviconUrlInput) faviconUrlInput.value = favicon_url;
+        }
+      }
+
       const res = await updateSiteSettings({
         logo_url,
         favicon_url
@@ -1431,6 +1449,367 @@ function initBrandingHandlers() {
 
   if (btnSaveTop) btnSaveTop.addEventListener("click", handleSaveBranding);
   if (btnSaveBottom) btnSaveBottom.addEventListener("click", handleSaveBranding);
+
+  // Initialize AI Studio for Background Removal
+  initAiStudioHandlers();
+}
+
+// =============================================================================
+// 9. AI STUDIO — SMART BACKGROUND REMOVER (REMOVE BG)
+// =============================================================================
+let currentAiSourceImg = null;
+let processedAiCanvas = null;
+let processedAiDataUrl = null;
+let aiDebounceTimer = null;
+
+function initAiStudioHandlers() {
+  const modal = document.getElementById("aiStudioModal");
+  const overlay = document.getElementById("aiStudioModalOverlay");
+  const btnClose = document.getElementById("btnCloseAiStudioModal");
+  const btnCancel = document.getElementById("btnCancelAiStudio");
+
+  // Open triggers
+  const btnLaunchBanner = document.getElementById("btnLaunchAiStudioBanner");
+  const btnOpenLogo = document.getElementById("btnOpenAiStudioLogo");
+  const btnOpenFavicon = document.getElementById("btnOpenAiStudioFavicon");
+
+  // File loading
+  const fileInput = document.getElementById("aiStudioFileInput");
+  const btnUpload = document.getElementById("btnAiStudioUploadNew");
+  const btnLoadLogo = document.getElementById("btnAiStudioLoadLogo");
+  const btnLoadFavicon = document.getElementById("btnAiStudioLoadFavicon");
+
+  // Sliders & Controls
+  const sensitivityRange = document.getElementById("aiSensitivityRange");
+  const sensitivityVal = document.getElementById("aiSensitivityVal");
+  const featherRange = document.getElementById("aiFeatherRange");
+  const featherVal = document.getElementById("aiFeatherVal");
+  const bgModeSelect = document.getElementById("aiBgModeSelect");
+
+  // Approval buttons
+  const btnApproveLogo = document.getElementById("btnApproveAiLogo");
+  const btnApproveFavicon = document.getElementById("btnApproveAiFavicon");
+  const btnDownloadPng = document.getElementById("btnDownloadAiResult");
+
+  const openModal = (initialSourceUrl = null) => {
+    if (modal) modal.style.display = "block";
+    if (overlay) overlay.style.display = "block";
+    resetAiStudioState();
+
+    const targetUrl = initialSourceUrl || document.getElementById("settingLogoUrl")?.value || "/images/logo.png";
+    if (targetUrl) {
+      loadSourceImage(targetUrl);
+    }
+  };
+
+  const closeModal = () => {
+    if (modal) modal.style.display = "none";
+    if (overlay) overlay.style.display = "none";
+  };
+
+  if (btnClose) btnClose.addEventListener("click", closeModal);
+  if (btnCancel) btnCancel.addEventListener("click", closeModal);
+  if (overlay) overlay.addEventListener("click", closeModal);
+
+  if (btnLaunchBanner) {
+    btnLaunchBanner.addEventListener("click", () => openModal(document.getElementById("settingLogoUrl")?.value));
+  }
+  if (btnOpenLogo) {
+    btnOpenLogo.addEventListener("click", () => openModal(document.getElementById("settingLogoUrl")?.value));
+  }
+  if (btnOpenFavicon) {
+    btnOpenFavicon.addEventListener("click", () => openModal(document.getElementById("settingFaviconUrl")?.value));
+  }
+
+  // Upload trigger
+  if (btnUpload && fileInput) {
+    btnUpload.addEventListener("click", () => fileInput.click());
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => loadSourceImage(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (btnLoadLogo) {
+    btnLoadLogo.addEventListener("click", () => {
+      const url = document.getElementById("settingLogoUrl")?.value || "/images/logo.png";
+      loadSourceImage(url);
+    });
+  }
+
+  if (btnLoadFavicon) {
+    btnLoadFavicon.addEventListener("click", () => {
+      const url = document.getElementById("settingFaviconUrl")?.value || "/favicon.png";
+      loadSourceImage(url);
+    });
+  }
+
+  // Sliders with debounced execution
+  if (sensitivityRange) {
+    sensitivityRange.addEventListener("input", (e) => {
+      if (sensitivityVal) sensitivityVal.textContent = e.target.value + "%";
+      scheduleAiExecution();
+    });
+  }
+
+  if (featherRange) {
+    featherRange.addEventListener("input", (e) => {
+      if (featherVal) featherVal.textContent = e.target.value + " px";
+      scheduleAiExecution();
+    });
+  }
+
+  if (bgModeSelect) {
+    bgModeSelect.addEventListener("change", () => {
+      scheduleAiExecution();
+    });
+  }
+
+  function scheduleAiExecution() {
+    clearTimeout(aiDebounceTimer);
+    aiDebounceTimer = setTimeout(() => {
+      if (currentAiSourceImg) executeAiBackgroundRemoval();
+    }, 120);
+  }
+
+  function resetAiStudioState() {
+    processedAiCanvas = null;
+    processedAiDataUrl = null;
+    const badge = document.getElementById("aiStudioApprovalBadge");
+    if (badge) {
+      badge.textContent = "Menunggu Persetujuan";
+      badge.style.background = "#FEF3C7";
+      badge.style.color = "#92400E";
+    }
+    if (btnApproveLogo) btnApproveLogo.disabled = true;
+    if (btnApproveFavicon) btnApproveFavicon.disabled = true;
+    if (btnDownloadPng) btnDownloadPng.disabled = true;
+  }
+
+  function loadSourceImage(src) {
+    const originalImg = document.getElementById("aiStudioOriginalPreview");
+    const emptyOriginal = document.getElementById("aiStudioOriginalEmpty");
+    const dimLabel = document.getElementById("aiOriginalDimensions");
+    const processingEl = document.getElementById("aiStudioProcessing");
+
+    if (processingEl) processingEl.style.display = "flex";
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      currentAiSourceImg = img;
+      if (originalImg) {
+        originalImg.src = src;
+        originalImg.style.display = "block";
+      }
+      if (emptyOriginal) emptyOriginal.style.display = "none";
+      if (dimLabel) dimLabel.textContent = `${img.naturalWidth} × ${img.naturalHeight} px`;
+
+      resetAiStudioState();
+      executeAiBackgroundRemoval();
+    };
+    img.onerror = () => {
+      if (processingEl) processingEl.style.display = "none";
+      showToast("Gagal memuat gambar ke AI Studio.", "error");
+    };
+    img.src = src;
+  }
+
+  function executeAiBackgroundRemoval() {
+    if (!currentAiSourceImg) return;
+
+    const processingEl = document.getElementById("aiStudioProcessing");
+    const resultCanvas = document.getElementById("aiStudioResultCanvas");
+    const emptyResult = document.getElementById("aiStudioResultEmpty");
+    const badge = document.getElementById("aiStudioApprovalBadge");
+
+    if (processingEl) processingEl.style.display = "flex";
+
+    // Small delay to allow UI spinner render
+    setTimeout(() => {
+      try {
+        const tolerance = parseInt(sensitivityRange?.value || "32", 10);
+        const feather = parseInt(featherRange?.value || "2", 10);
+        const mode = bgModeSelect?.value || "auto";
+
+        const canvas = document.createElement("canvas");
+        const maxDim = 1000;
+        let w = currentAiSourceImg.naturalWidth || currentAiSourceImg.width || 400;
+        let h = currentAiSourceImg.naturalHeight || currentAiSourceImg.height || 400;
+
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(currentAiSourceImg, 0, 0, w, h);
+
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+
+        // Background color samples
+        let bgSamples = [];
+        if (mode === "white") {
+          bgSamples = [{ r: 255, g: 255, b: 255 }];
+        } else if (mode === "black") {
+          bgSamples = [{ r: 0, g: 0, b: 0 }];
+        } else {
+          // Auto sample corner & boundary pixels
+          const coords = [
+            [0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1],
+            [Math.floor(w / 2), 0], [0, Math.floor(h / 2)],
+            [w - 1, Math.floor(h / 2)], [Math.floor(w / 2), h - 1],
+            [Math.floor(w / 4), 0], [Math.floor((3 * w) / 4), 0]
+          ];
+          coords.forEach(([cx, cy]) => {
+            const idx = (cy * w + cx) * 4;
+            bgSamples.push({ r: d[idx], g: d[idx + 1], b: d[idx + 2] });
+          });
+        }
+
+        const thresholdDist = (tolerance / 100) * 280;
+        const featherDist = Math.max(8, thresholdDist * (feather * 0.18));
+
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i];
+          const g = d[i + 1];
+          const b = d[i + 2];
+          const a = d[i + 3];
+
+          if (a === 0) continue;
+
+          let minDist = Infinity;
+          for (let s = 0; s < bgSamples.length; s++) {
+            const dr = r - bgSamples[s].r;
+            const dg = g - bgSamples[s].g;
+            const db = b - bgSamples[s].b;
+            const dist = Math.sqrt(dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11);
+            if (dist < minDist) minDist = dist;
+          }
+
+          if (minDist < thresholdDist - featherDist) {
+            d[i + 3] = 0;
+          } else if (minDist < thresholdDist) {
+            const factor = (minDist - (thresholdDist - featherDist)) / featherDist;
+            d[i + 3] = Math.round(a * Math.min(1, Math.max(0, factor)));
+          }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+
+        // Update preview canvas in DOM
+        if (resultCanvas) {
+          resultCanvas.width = w;
+          resultCanvas.height = h;
+          const rCtx = resultCanvas.getContext("2d");
+          rCtx.clearRect(0, 0, w, h);
+          rCtx.drawImage(canvas, 0, 0);
+          resultCanvas.style.display = "block";
+        }
+
+        if (emptyResult) emptyResult.style.display = "none";
+
+        processedAiCanvas = canvas;
+        processedAiDataUrl = canvas.toDataURL("image/png");
+
+        if (badge) {
+          badge.textContent = "Siap Disetujui (Draft)";
+          badge.style.background = "#DCFCE7";
+          badge.style.color = "#15803D";
+        }
+
+        if (btnApproveLogo) btnApproveLogo.disabled = false;
+        if (btnApproveFavicon) btnApproveFavicon.disabled = false;
+        if (btnDownloadPng) btnDownloadPng.disabled = false;
+      } catch (err) {
+        console.error("[AI Studio] Error during processing:", err);
+        showToast("Kendala pemrosesan AI: " + err.message, "error");
+      } finally {
+        if (processingEl) processingEl.style.display = "none";
+      }
+    }, 40);
+  }
+
+  // Persetujuan 1: Setujui & Pasang Sebagai Logo Website
+  if (btnApproveLogo) {
+    btnApproveLogo.addEventListener("click", () => {
+      if (!processedAiDataUrl) return;
+
+      const logoUrlInput = document.getElementById("settingLogoUrl");
+      const logoPreview = document.getElementById("currentLogoPreview");
+
+      if (logoUrlInput) logoUrlInput.value = processedAiDataUrl;
+      if (logoPreview) logoPreview.src = processedAiDataUrl;
+
+      closeModal();
+      showToast("Hasil AI disetujui untuk Logo Website! Klik 'Simpan Perubahan Branding' untuk menerapkan ke web.", "success");
+    });
+  }
+
+  // Persetujuan 2: Setujui & Pasang Sebagai Favicon
+  if (btnApproveFavicon) {
+    btnApproveFavicon.addEventListener("click", () => {
+      if (!processedAiCanvas) return;
+
+      // Crop and scale to square 1:1 favicon (e.g. 128x128)
+      const sqCanvas = document.createElement("canvas");
+      sqCanvas.width = 128;
+      sqCanvas.height = 128;
+      const sqCtx = sqCanvas.getContext("2d");
+
+      const sw = processedAiCanvas.width;
+      const sh = processedAiCanvas.height;
+      const size = Math.min(sw, sh);
+      const sx = (sw - size) / 2;
+      const sy = (sh - size) / 2;
+
+      sqCtx.clearRect(0, 0, 128, 128);
+      sqCtx.drawImage(processedAiCanvas, sx, sy, size, size, 0, 0, 128, 128);
+
+      const faviconDataUrl = sqCanvas.toDataURL("image/png");
+
+      const faviconUrlInput = document.getElementById("settingFaviconUrl");
+      const faviconPreview = document.getElementById("currentFaviconPreview");
+
+      if (faviconUrlInput) faviconUrlInput.value = faviconDataUrl;
+      if (faviconPreview) faviconPreview.src = faviconDataUrl;
+
+      // Update admin browser tab favicon live
+      const adminFavicon = document.querySelector("link[rel*='icon']");
+      if (adminFavicon) adminFavicon.href = faviconDataUrl;
+
+      closeModal();
+      showToast("Hasil AI disetujui untuk Favicon Browser! Klik 'Simpan Perubahan Branding' untuk menerapkan.", "success");
+    });
+  }
+
+  // Unduh PNG Transparan
+  if (btnDownloadPng) {
+    btnDownloadPng.addEventListener("click", () => {
+      if (!processedAiDataUrl) return;
+      const link = document.createElement("a");
+      link.href = processedAiDataUrl;
+      link.download = `logo-transparan-ai-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast("File PNG transparan berhasil diunduh!", "info");
+    });
+  }
 }
 
 // =============================================================================
