@@ -121,18 +121,18 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-## 5. CARA PENGGUNAAN ADMIN CMS
+## 5. CARA PENGGUNAAN SIOMAY ADMIN
 
 ### Akun Pemilik Terdaftar (Owner Login)
-Untuk mengakses dashboard CMS, masukkan kredensial akun owner:
-- **Email:** `admin@siomayonline.com`
+Untuk mengakses dashboard Siomay Admin, masukkan kredensial akun owner:
+- **Username / Email:** `admin` (atau `admin@siomayonline.com`)
 - **Password:** `admin123`
 
 ### Langkah Masuk:
 1. Buka `http://localhost:5173/admin` (atau `/admin` pada domain produksi).
-2. Anda akan diarahkan ke halaman login pemilik.
-3. Masukkan Email dan Kata Sandi owner, lalu klik **Masuk ke Dashboard →**.
-4. Masuk ke Dashboard CMS:
+2. Anda akan diarahkan ke halaman login WordPress minimalis.
+3. Masukkan Username (`admin`) dan Kata Sandi (`admin123`), lalu klik **Log In**.
+4. Masuk ke Dashboard Siomay Admin:
    - **Ringkasan**: Melihat statistik total menu, kontak WhatsApp, serta pesanan masuk.
    - **Kelola Menu**:
      - Klik **+ Tambah Menu Baru** untuk menambah produk.

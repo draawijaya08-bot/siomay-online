@@ -96,49 +96,94 @@ function initAuthHandlers() {
   const emailInput = document.getElementById("ownerEmail");
   const passwordInput = document.getElementById("ownerPassword");
   const btnLogin = document.getElementById("btnOwnerLogin");
+  const btnTogglePassword = document.getElementById("btnTogglePassword");
+  const rememberMeCheckbox = document.getElementById("rememberMe");
+  const linkLostPassword = document.getElementById("linkLostPassword");
 
+  // 1. Password Visibility Eye Toggle
+  if (btnTogglePassword && passwordInput) {
+    btnTogglePassword.addEventListener("click", () => {
+      const isPassword = passwordInput.type === "password";
+      passwordInput.type = isPassword ? "text" : "password";
+
+      const iconEye = btnTogglePassword.querySelector(".icon-eye");
+      const iconEyeOff = btnTogglePassword.querySelector(".icon-eye-off");
+
+      if (iconEye && iconEyeOff) {
+        iconEye.style.display = isPassword ? "none" : "block";
+        iconEyeOff.style.display = isPassword ? "block" : "none";
+      }
+
+      btnTogglePassword.setAttribute("aria-label", isPassword ? "Sembunyikan kata sandi" : "Lihat kata sandi");
+    });
+  }
+
+  // 2. Lost Password Handler
+  if (linkLostPassword) {
+    linkLostPassword.addEventListener("click", (e) => {
+      e.preventDefault();
+      alert(
+        "Lupa Kata Sandi:\n\n" +
+        "Akun Admin terdaftar:\n" +
+        "• admin / admin@siomayonline.com\n\n" +
+        "Kata sandi default: admin123\n\n" +
+        "Jika Anda ingin mengubah kata sandi pemilik permanen, silakan kelola langsung melalui Dashboard Supabase Authentication."
+      );
+    });
+  }
+
+  // 3. Form Login Submission
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const email = emailInput ? emailInput.value.trim() : "";
+      const identifier = emailInput ? emailInput.value.trim() : "";
       const password = passwordInput ? passwordInput.value : "";
 
-      if (!email || !password) {
-        showAuthError("Email dan kata sandi wajib diisi.");
+      if (!identifier || !password) {
+        showAuthError("Username/Email dan kata sandi wajib diisi.");
         return;
       }
 
       if (btnLogin) {
         btnLogin.disabled = true;
-        btnLogin.textContent = "Memverifikasi...";
+        btnLogin.textContent = "Logging In...";
       }
 
       hideAuthError();
-      const res = await loginOwner(email, password);
+      const res = await loginOwner(identifier, password);
 
       if (btnLogin) {
         btnLogin.disabled = false;
-        btnLogin.textContent = "Masuk ke Dashboard →";
+        btnLogin.textContent = "Log In";
       }
 
       if (!res.success) {
-        showAuthError(res.error || "Gagal masuk. Periksa kembali email dan password.");
+        showAuthError(res.error || "Gagal masuk. Periksa kembali username/email dan kata sandi Anda.");
         return;
       }
 
       currentOwner = res.user;
+
+      // Handle Remember Me persistence
+      if (rememberMeCheckbox && rememberMeCheckbox.checked && typeof localStorage !== "undefined") {
+        try {
+          localStorage.setItem("siomay_persistent_owner", JSON.stringify(currentOwner));
+        } catch {}
+      }
+
       await checkAuthSession();
-      showToast("Selamat datang kembali di Admin CMS Siomay Online!", "success");
+      showToast("Selamat datang di Siomay Admin!", "success");
     });
   }
 
+  // 4. Logout Handler
   if (btnLogout) {
     btnLogout.addEventListener("click", async () => {
-      if (confirm("Apakah Anda yakin ingin keluar dari Admin CMS?")) {
+      if (confirm("Apakah Anda yakin ingin keluar dari Siomay Admin?")) {
         await logoutOwner();
         currentOwner = null;
         await checkAuthSession();
-        showToast("Anda telah keluar dari CMS.", "info");
+        showToast("Anda telah keluar dari Siomay Admin.", "info");
       }
     });
   }

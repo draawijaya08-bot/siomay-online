@@ -3538,157 +3538,217 @@ ul, ol {
   min-height: 100vh;
 }
 
-/* Auth Login Screen */
-.cms-auth-screen {
+/* ==========================================================================
+   AUTH LOGIN SCREEN — WORDPRESS CLEAN MINIMALIST STYLE (CLIENT REFERENCE)
+   ========================================================================== */
+.cms-auth-screen.wp-login-screen {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  background: radial-gradient(circle at top right, rgba(222, 74, 29, 0.08), transparent 40%),
-              radial-gradient(circle at bottom left, rgba(212, 139, 30, 0.06), transparent 40%),
-              var(--bg-page);
+  padding: 32px 16px;
+  background-color: #f0f0f1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  box-sizing: border-box;
 }
 
-.cms-auth-card {
-  width: 100%;
-  max-width: 440px;
-  background-color: var(--bg-surface);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border-subtle);
-  padding: 40px 32px;
-  box-shadow: var(--shadow-modal);
-  display: flex;
-  flex-direction: column;
-}
-
-.cms-auth-header {
-  text-align: center;
+.wp-login-logo {
   margin-bottom: 24px;
+  text-align: center;
 }
 
-.cms-brand-logo {
+.wp-login-logo a {
   display: inline-block;
-  margin-bottom: 12px;
+  text-decoration: none;
   transition: transform 0.2s ease;
 }
 
-.cms-brand-logo:hover {
-  transform: scale(1.05);
+.wp-login-logo a:hover {
+  transform: scale(1.04);
 }
 
-.cms-auth-title {
-  font-family: var(--font-editorial);
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--text-main);
-  line-height: 1.25;
+.wp-login-logo img {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: #ffffff;
+  padding: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  display: block;
+  margin: 0 auto;
 }
 
-.cms-auth-subtitle {
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  margin-top: 6px;
+.cms-auth-card.wp-login-card {
+  width: 100%;
+  max-width: 320px;
+  background-color: #ffffff;
+  border: 1px solid #c3c4c7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 26px 24px 26px;
+  border-radius: 2px;
+  box-sizing: border-box;
 }
 
-.cms-auth-form {
+.wp-login-error {
+  border-left: 4px solid #d63638;
+  background-color: #ffffff;
+  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #3c434a;
+  border-radius: 0;
+}
+
+.wp-login-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
 }
 
-/* Quick Demo Box in Auth Screen */
-.cms-demo-box {
-  margin-top: 10px;
-  padding: 16px;
-  border-radius: var(--radius-md);
-  background-color: var(--bg-surface-warm);
-  border: 1.5px dashed var(--accent-orange);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.wp-form-group {
+  margin-bottom: 18px;
 }
 
-.demo-box-badge {
-  display: inline-block;
-  align-self: flex-start;
-  font-size: 0.76rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--accent-orange);
-  background-color: rgba(222, 74, 29, 0.1);
-  padding: 4px 8px;
+.wp-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3338;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.wp-input {
+  width: 100%;
+  height: 40px;
+  padding: 6px 12px;
+  font-size: 15px;
+  line-height: 1.33333333;
+  color: #2c3338;
+  background-color: #ffffff;
+  border: 1px solid #8c8f94;
   border-radius: 4px;
+  box-shadow: 0 0 0 transparent;
+  transition: box-shadow 0.1s linear, border-color 0.1s linear;
+  box-sizing: border-box;
+  font-family: inherit;
 }
 
-.demo-box-desc {
-  font-size: 0.82rem;
-  color: var(--text-body);
-  line-height: 1.4;
+.wp-input:focus {
+  border-color: #2271b1;
+  box-shadow: 0 0 0 1px #2271b1;
+  outline: 2px solid transparent;
+}
+
+.wp-password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.wp-password-field {
+  padding-right: 44px;
+}
+
+.wp-btn-pw-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #2271b1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.wp-btn-pw-toggle:hover {
+  color: #135e96;
+}
+
+.wp-login-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.wp-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #50575e;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wp-checkbox-label input[type="checkbox"] {
+  accent-color: #2271b1;
+  width: 16px;
+  height: 16px;
   margin: 0;
+  cursor: pointer;
 }
 
-.demo-credentials-pill {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background-color: var(--bg-surface);
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-light);
-  font-size: 0.82rem;
-  color: var(--text-main);
-}
-
-.demo-credentials-pill strong {
-  font-family: monospace;
-  color: var(--accent-orange);
-}
-
-.btn-demo-action {
-  font-size: 0.85rem;
-  padding: 10px 14px;
-  border-color: var(--accent-orange);
-  color: var(--accent-orange);
-}
-
-.btn-demo-action:hover {
-  background-color: var(--accent-orange);
-  color: #FFFFFF;
-}
-
-.cms-auth-footer {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border-light);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.cms-back-link {
-  font-size: 0.86rem;
+.wp-btn-submit {
+  background-color: #2271b1;
+  border: 1px solid #2271b1;
+  color: #ffffff;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--accent-orange);
-  text-decoration: none;
-}
-
-.cms-back-link:hover {
-  text-decoration: underline;
-}
-
-.cms-auth-hint {
-  font-size: 0.78rem;
-  color: var(--text-subtle);
-}
-
-.cms-auth-hint code {
-  background-color: var(--bg-surface-warm);
-  padding: 2px 6px;
+  line-height: 2.15384615;
+  min-height: 34px;
+  padding: 0 16px;
   border-radius: 4px;
-  font-size: 0.76rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.wp-btn-submit:hover {
+  background-color: #135e96;
+  border-color: #135e96;
+}
+
+.wp-btn-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.wp-login-nav,
+.wp-back-to-blog {
+  width: 100%;
+  max-width: 320px;
+  margin: 16px 0 0;
+  padding: 0;
+  font-size: 13px;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.wp-login-nav a,
+.wp-back-to-blog a {
+  color: #50575e;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.wp-login-nav a:hover,
+.wp-back-to-blog a:hover {
+  color: #2271b1;
 }
 
 /* CMS Layout & Sidebar */
