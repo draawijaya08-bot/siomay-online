@@ -100,7 +100,25 @@ export async function logoutOwner() {
  * Get current session and verify owner authorization
  */
 export async function getCurrentOwner() {
-  // 1. Always check demo owner session first (works in both offline and online modes)
+  // 1. If Supabase is connected, ALWAYS verify real Supabase Auth session first
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (!error && session?.user) {
+        return session.user;
+      }
+    } catch {
+      // ignore
+    }
+
+    // Clean up stale mock demo session from browser storage if present
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("siomay_demo_owner");
+    }
+    return null;
+  }
+
+  // 2. Offline / local-only buffer fallback
   if (typeof sessionStorage !== "undefined") {
     const stored = sessionStorage.getItem("siomay_demo_owner");
     if (stored) {
@@ -112,19 +130,7 @@ export async function getCurrentOwner() {
     }
   }
 
-  if (!isSupabaseConfigured || !supabase) {
-    return null;
-  }
-
-  // 2. Check Supabase auth session
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session?.user) return null;
-
-    return session.user;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 /**

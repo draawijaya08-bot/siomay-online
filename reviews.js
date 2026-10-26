@@ -56,9 +56,9 @@ export function renderStarsHtml(rating) {
   let stars = "";
   for (let i = 1; i <= 5; i++) {
     if (i <= cleanRating) {
-      stars += `<span class="review-star star-filled" aria-hidden="true">★</span>`;
+      stars += `<span class="review-star star-filled" aria-hidden="true">&#9733;</span>`;
     } else {
-      stars += `<span class="review-star star-empty" aria-hidden="true">☆</span>`;
+      stars += `<span class="review-star star-empty" aria-hidden="true">&#9734;</span>`;
     }
   }
   return `<span class="review-stars-group" aria-label="Rating ${cleanRating} dari 5 bintang">${stars}</span>`;
@@ -676,10 +676,11 @@ function initStarRatingSelector() {
 // REVIEW SUBMISSION MODAL LIFECYCLE
 // =============================================================================
 
-export function openReviewModal() {
+export function openReviewModal({ prefillName = "", prefillMenuItemId = "" } = {}) {
   const modal = document.getElementById("reviewModal");
   const overlay = document.getElementById("reviewModalOverlay");
   const nameInput = document.getElementById("reviewAuthorName");
+  const menuSelect = document.getElementById("reviewMenuItem");
   const formAlert = document.getElementById("reviewFormAlert");
   const successState = document.getElementById("reviewSuccessState");
   const formElement = document.getElementById("reviewForm");
@@ -694,12 +695,26 @@ export function openReviewModal() {
   if (successState) successState.style.display = "none";
   if (formElement) formElement.style.display = "block";
 
+  if (prefillName && nameInput && !nameInput.value) {
+    nameInput.value = prefillName;
+  }
+  if (prefillMenuItemId && menuSelect) {
+    menuSelect.value = prefillMenuItemId;
+  }
+
   modal.classList.add("open");
   if (overlay) overlay.classList.add("open");
   document.body.style.overflow = "hidden";
 
   if (nameInput) {
-    setTimeout(() => nameInput.focus(), 150);
+    setTimeout(() => {
+      const commentInput = document.getElementById("reviewComment");
+      if (prefillName && commentInput) {
+        commentInput.focus();
+      } else {
+        nameInput.focus();
+      }
+    }, 150);
   }
 }
 

@@ -292,7 +292,7 @@ export function buildWhatsAppOrderUrl(cartSummary, customer) {
   return `${CONFIG.whatsappBaseUrl}${cleanNumber}?text=${encodeURIComponent(text)}`;
 }
 
-import { initReviewsSection } from "./reviews.js";
+import { initReviewsSection, openReviewModal } from "./reviews.js";
 import { fetchAllMenuItems, fetchSiteSettings } from "./cmsService.js";
 
 // =============================================================================
@@ -675,6 +675,17 @@ function initCartDrawer() {
       if (lastUrl) {
         window.open(lastUrl, "_blank", "noopener,noreferrer");
       }
+    });
+  }
+
+  // Handle write review from order success state
+  const btnWriteReviewFromOrder = document.getElementById("btnWriteReviewFromOrder");
+  if (btnWriteReviewFromOrder) {
+    btnWriteReviewFromOrder.addEventListener("click", () => {
+      closeDrawer();
+      const nameInput = document.getElementById("customerName");
+      const customerName = nameInput ? nameInput.value.trim() : "";
+      openReviewModal({ prefillName: customerName });
     });
   }
 

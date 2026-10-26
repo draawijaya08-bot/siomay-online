@@ -56,3 +56,18 @@ CREATE POLICY "Public can manage orders"
   USING (true)
   WITH CHECK (true);
 
+-- 5. Akses Moderasi Ulasan Pelanggan (customer_reviews)
+DROP POLICY IF EXISTS "Public can view approved reviews" ON public.customer_reviews;
+DROP POLICY IF EXISTS "Public can insert pending reviews only" ON public.customer_reviews;
+DROP POLICY IF EXISTS "Authenticated admin can view all reviews" ON public.customer_reviews;
+DROP POLICY IF EXISTS "Authenticated admin can update reviews" ON public.customer_reviews;
+DROP POLICY IF EXISTS "Authenticated admin can delete reviews" ON public.customer_reviews;
+DROP POLICY IF EXISTS "Public can manage reviews" ON public.customer_reviews;
+
+CREATE POLICY "Public can manage reviews"
+  ON public.customer_reviews FOR ALL
+  TO public
+  USING (true)
+  WITH CHECK (true);
+
+

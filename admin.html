@@ -666,19 +666,37 @@
               <h1 class="view-title">Moderasi Ulasan Pelanggan</h1>
               <p class="view-desc">Ulasan yang dikirim oleh pelanggan dari website publik. Hanya ulasan yang berstatus 'Disetujui' yang akan tampil di halaman depan.</p>
             </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshReviews">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              <span>Segarkan Ulasan</span>
-            </button>
+            <div class="view-header-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshReviews">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>Segarkan Ulasan</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnCleanTestData" title="Hapus semua ulasan awal data tes agar hanya tersisa ulasan asli pelanggan">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>Bersihkan Data Tes</span>
+              </button>
+            </div>
           </div>
 
           <!-- Filter Tabs -->
           <div class="admin-tabs-bar">
             <div class="admin-tabs" role="tablist">
-              <button type="button" class="admin-tab active" data-review-filter="all">Semua Ulasan</button>
-              <button type="button" class="admin-tab" data-review-filter="pending">Menunggu Tinjauan</button>
-              <button type="button" class="admin-tab" data-review-filter="approved">Disetujui (Tampil di Web)</button>
-              <button type="button" class="admin-tab" data-review-filter="rejected">Ditolak</button>
+              <button type="button" class="admin-tab active" data-review-filter="all">
+                <span>Semua Ulasan</span>
+                <span class="tab-badge" id="badgeAllReviewsCount">0</span>
+              </button>
+              <button type="button" class="admin-tab" data-review-filter="pending">
+                <span>Menunggu Tinjauan</span>
+                <span class="tab-badge badge-pending-highlight" id="badgePendingReviewsCount">0</span>
+              </button>
+              <button type="button" class="admin-tab" data-review-filter="approved">
+                <span>Disetujui (Tampil di Web)</span>
+                <span class="tab-badge" id="badgeApprovedReviewsCount">0</span>
+              </button>
+              <button type="button" class="admin-tab" data-review-filter="rejected">
+                <span>Ditolak</span>
+                <span class="tab-badge" id="badgeRejectedReviewsCount">0</span>
+              </button>
             </div>
           </div>
 

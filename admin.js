@@ -1280,12 +1280,19 @@ async function handleSaveWhatsApp() {
 // =============================================================================
 function initReviewHandlers() {
   const btnRefresh = document.getElementById("btnRefreshReviews");
+  const btnClean = document.getElementById("btnCleanTestData");
   const tabs = document.querySelectorAll("[data-review-filter]");
 
   if (btnRefresh) {
     btnRefresh.addEventListener("click", async () => {
       await loadReviewsForAdmin();
       showToast("Data ulasan pelanggan disegarkan.", "info");
+    });
+  }
+
+  if (btnClean) {
+    btnClean.addEventListener("click", async () => {
+      await handleCleanTestData();
     });
   }
 
@@ -1297,6 +1304,29 @@ function initReviewHandlers() {
       renderReviewsForAdmin();
     });
   });
+}
+
+async function handleCleanTestData() {
+  const testReviews = allReviews.filter(r => 
+    (r.display_name && r.display_name.toLowerCase().includes("test data")) ||
+    (r.display_name && r.display_name.toLowerCase().includes("(test data)"))
+  );
+
+  if (testReviews.length === 0) {
+    alert("Tidak ditemukan ulasan data tes. Semua ulasan di database adalah ulasan pelanggan asli.");
+    return;
+  }
+
+  if (!confirm(`Ditemukan ${testReviews.length} ulasan bertanda '(Test Data)'.\n\nApakah Anda ingin menghapus semua data tes ini agar dashboard hanya menampilkan ulasan asli dari pelanggan yang memesan?`)) {
+    return;
+  }
+
+  for (const r of testReviews) {
+    await deleteReviewFromDb(r.id, true);
+  }
+
+  showToast(`${testReviews.length} ulasan data tes berhasil dibersihkan!`, "success");
+  await loadReviewsForAdmin();
 }
 
 async function loadReviewsForAdmin() {
@@ -1311,6 +1341,7 @@ async function loadReviewsForAdmin() {
   if (!isSupabaseConfigured || !supabase) {
     if (loading) loading.style.display = "none";
     allReviews = getLocalReviews();
+    updateReviewCountBadges();
     renderReviewsForAdmin();
     updateOverviewMetrics();
     return;
@@ -1326,15 +1357,33 @@ async function loadReviewsForAdmin() {
     if (error) throw error;
 
     allReviews = data || [];
+    updateReviewCountBadges();
     renderReviewsForAdmin();
     updateOverviewMetrics();
   } catch (err) {
     if (loading) loading.style.display = "none";
     console.warn("[Reviews CMS] Supabase query offline, falling back to local buffer:", err);
     allReviews = getLocalReviews();
+    updateReviewCountBadges();
     renderReviewsForAdmin();
     updateOverviewMetrics();
   }
+}
+
+function updateReviewCountBadges() {
+  const badgeAll = document.getElementById("badgeAllReviewsCount");
+  const badgePending = document.getElementById("badgePendingReviewsCount");
+  const badgeApproved = document.getElementById("badgeApprovedReviewsCount");
+  const badgeRejected = document.getElementById("badgeRejectedReviewsCount");
+
+  const pendingCount = allReviews.filter(r => r.status === "pending").length;
+  const approvedCount = allReviews.filter(r => r.status === "approved").length;
+  const rejectedCount = allReviews.filter(r => r.status === "rejected").length;
+
+  if (badgeAll) badgeAll.textContent = allReviews.length;
+  if (badgePending) badgePending.textContent = pendingCount;
+  if (badgeApproved) badgeApproved.textContent = approvedCount;
+  if (badgeRejected) badgeRejected.textContent = rejectedCount;
 }
 
 function renderReviewsForAdmin() {
@@ -1367,13 +1416,21 @@ function renderReviewsForAdmin() {
       rejected: "Ditolak"
     };
 
+    const firstLetter = (review.display_name || "P").trim().charAt(0).toUpperCase();
+
     card.innerHTML = `
       <div class="admin-review-header">
         <div class="admin-customer-meta">
-          <strong class="admin-customer-name">${escapeSafe(review.display_name)}</strong>
-          <span class="admin-review-date">• ${dateStr}</span>
+          <div class="customer-avatar" aria-hidden="true">${firstLetter}</div>
+          <div>
+            <strong class="admin-customer-name">${escapeSafe(review.display_name)}</strong>
+            <span class="admin-review-date">• ${dateStr}</span>
+          </div>
         </div>
-        <span class="status-pill pill-${review.status}">${statusLabels[review.status] || review.status}</span>
+        <span class="status-pill pill-${review.status}">
+          ${review.status === 'pending' ? '⏳ ' : review.status === 'approved' ? '✓ ' : '✕ '}
+          ${statusLabels[review.status] || review.status}
+        </span>
       </div>
       <div class="admin-rating-row">
         <div>${renderStarsHtml(review.rating)}</div>
@@ -1381,9 +1438,9 @@ function renderReviewsForAdmin() {
       </div>
       <p class="admin-comment-text">${escapeSafe(review.comment)}</p>
       <div class="admin-actions-row">
-        ${review.status !== 'approved' ? `<button type="button" class="btn btn-sm btn-approve" data-act="approve" data-id="${review.id}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> <span>Setujui</span></button>` : ''}
-        ${review.status !== 'rejected' ? `<button type="button" class="btn btn-sm btn-reject" data-act="reject" data-id="${review.id}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> <span>Tolak</span></button>` : ''}
-        <button type="button" class="btn btn-sm btn-delete" data-act="delete" data-id="${review.id}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>Hapus</span></button>
+        ${review.status !== 'approved' ? `<button type="button" class="btn btn-sm btn-approve" data-act="approve" data-id="${review.id}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> <span>Setujui</span></button>` : ''}
+        ${review.status !== 'rejected' ? `<button type="button" class="btn btn-sm btn-reject" data-act="reject" data-id="${review.id}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> <span>Tolak</span></button>` : ''}
+        <button type="button" class="btn btn-sm btn-delete" data-act="delete" data-id="${review.id}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>Hapus</span></button>
       </div>
     `;
 
@@ -1442,7 +1499,7 @@ async function updateReviewModerationStatus(id, newStatus) {
   await loadReviewsForAdmin();
 }
 
-async function deleteReviewFromDb(id) {
+async function deleteReviewFromDb(id, silent = false) {
   // Always delete from local reviews buffer
   let localList = getLocalReviews();
   localList = localList.filter(r => r.id !== id);
@@ -1461,8 +1518,10 @@ async function deleteReviewFromDb(id) {
     }
   }
 
-  showToast("Ulasan berhasil dihapus.", "success");
-  await loadReviewsForAdmin();
+  if (!silent) {
+    showToast("Ulasan berhasil dihapus.", "success");
+    await loadReviewsForAdmin();
+  }
 }
 
 // =============================================================================
