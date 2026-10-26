@@ -43,21 +43,21 @@
        ======================================================================== -->
   <div class="business-strip" id="businessStrip">
     <div class="container business-strip-inner">
-      <div class="strip-item">
-        <span class="status-indicator" aria-hidden="true"></span>
-        <span class="strip-label">Buka Hari Ini:</span>
-        <strong class="strip-val">10.00 — 21.00 WIB</strong>
+      <div class="strip-item" id="stripItemHours">
+        <span class="status-indicator" id="stripStatusDot" aria-hidden="true"></span>
+        <span class="strip-label" id="stripStatusLabel">Buka Hari Ini:</span>
+        <strong class="strip-val" id="stripHoursVal">10.00 — 21.00 WIB</strong>
       </div>
       <div class="strip-separator" aria-hidden="true">•</div>
-      <div class="strip-item">
+      <div class="strip-item" id="stripItemLocation">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-        <span class="strip-label">Delivery Area:</span>
-        <strong class="strip-val">Klaten & Sekitarnya</strong>
+        <span class="strip-label" id="stripLocationLabel">Delivery Area:</span>
+        <strong class="strip-val" id="stripLocationVal">Klaten & Sekitarnya</strong>
       </div>
       <div class="strip-separator" aria-hidden="true">•</div>
-      <div class="strip-item">
+      <div class="strip-item" id="stripItemAnnouncement">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-        <span>100% Ikan Tenggiri • Fresh Setiap Hari</span>
+        <span id="stripAnnouncementVal">100% Ikan Tenggiri • Fresh Setiap Hari</span>
       </div>
     </div>
   </div>
@@ -885,8 +885,8 @@
             Siomay fresh dengan bumbu kacang khas Bandung, diolah setiap hari dengan bahan berkualitas dan siap diantar ke rumahmu.
           </p>
           <div class="footer-hours">
-            <span>🕒 <strong>Buka:</strong> Setiap Hari, 10.00 — 21.00 WIB</span>
-            <span>📍 <strong>Area:</strong> Klaten & Sekitarnya</span>
+            <span>🕒 <strong>Buka:</strong> <span id="footerHoursVal">Setiap Hari, 10.00 — 21.00 WIB</span></span>
+            <span>📍 <strong>Area:</strong> <span id="footerAreaVal">Klaten & Sekitarnya</span></span>
           </div>
         </div>
 

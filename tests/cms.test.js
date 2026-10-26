@@ -62,6 +62,7 @@ console.log("\nTest 2: admin.html Complete CMS Dashboard Views Verification...")
   assert.ok(html.includes('data-target-view="viewOverview"'), "Contains Overview nav tab");
   assert.ok(html.includes('data-target-view="viewMenu"'), "Contains Menu nav tab");
   assert.ok(html.includes('data-target-view="viewContent"'), "Contains Content/Banner nav tab");
+  assert.ok(html.includes('data-target-view="viewOperations"'), "Contains Operations/Hours nav tab");
   assert.ok(html.includes('data-target-view="viewWhatsApp"'), "Contains WhatsApp nav tab");
   assert.ok(html.includes('data-target-view="viewReviews"'), "Contains Reviews nav tab");
 
@@ -69,6 +70,9 @@ console.log("\nTest 2: admin.html Complete CMS Dashboard Views Verification...")
   assert.ok(html.includes('id="viewMenu"'), "Contains Menu management view");
   assert.ok(html.includes('id="menuModal"'), "Contains Add/Edit menu modal dialog");
   assert.ok(html.includes('id="viewContent"'), "Contains Banner & Video promo view");
+  assert.ok(html.includes('id="viewOperations"'), "Contains Operations & Store location view");
+  assert.ok(html.includes('id="settingOperationalStatus"'), "Contains store status dropdown");
+  assert.ok(html.includes('id="settingDeliveryArea"'), "Contains delivery area input");
   assert.ok(html.includes('id="viewWhatsApp"'), "Contains WhatsApp settings view");
   assert.ok(html.includes('id="viewReviews"'), "Contains Reviews moderation view");
 
@@ -79,7 +83,7 @@ console.log("\nTest 2: admin.html Complete CMS Dashboard Views Verification...")
   assert.ok(!html.includes('id="btnQuickDemoLogin"'), "1-Click demo login button is removed for client security");
   assert.ok(!html.includes('cms-demo-box'), "Demo credentials box is completely removed");
 
-  console.log("✓ admin.html contains all 5 required CMS management views and clean production login form.");
+  console.log("✓ admin.html contains all 6 required CMS management views and clean production login form.");
 }
 
 // -----------------------------------------------------------------------------
@@ -113,9 +117,11 @@ console.log("\nTest 4: Public Website Backend Synchronization...");
   assert.ok(main.includes("activeProducts"), "Exports dynamic activeProducts");
   assert.ok(main.includes("syncPublicWebsiteFromBackend"), "Contains backend synchronization function");
   assert.ok(main.includes("renderPromoVideoOnPublicSite"), "Supports dynamic promotional video embedding");
+  assert.ok(main.includes("stripLocationVal"), "Synchronizes dynamic store location / delivery area");
+  assert.ok(main.includes("stripHoursVal"), "Synchronizes dynamic operational opening hours");
   assert.ok(main.includes("Stok Habis"), "Renders stock out indicators for unavailable items");
 
-  console.log("✓ main.js contains dynamic sync for menu, WhatsApp, banner, and promo video.");
+  console.log("✓ main.js contains dynamic sync for menu, WhatsApp, banner, promo video, and operational hours.");
 }
 
 // -----------------------------------------------------------------------------

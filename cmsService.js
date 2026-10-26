@@ -549,7 +549,17 @@ export const DEFAULT_SITE_SETTINGS = {
   hero_cta_url: null,
   hero_image_url: "/images/hero.jpg",
   promo_video_url: null,
-  promo_video_poster_url: null
+  promo_video_poster_url: null,
+  // Jam Operasional & Lokasi Toko
+  operational_status: "buka",
+  operational_status_label: "Buka Hari Ini:",
+  operational_open_time: "10:00",
+  operational_close_time: "21:00",
+  operational_timezone: "WIB",
+  operational_days: "Setiap Hari",
+  operational_hours: "10.00 — 21.00 WIB",
+  delivery_area: "Klaten & Sekitarnya",
+  strip_announcement: "100% Ikan Tenggiri • Fresh Setiap Hari"
 };
 
 let inMemorySettings = null;
@@ -605,6 +615,15 @@ export async function fetchSiteSettings() {
         .maybeSingle();
 
       if (!error && data) {
+        // Unpack cloud fallback configuration if present
+        if (data.hero_cta_url && typeof data.hero_cta_url === "string" && data.hero_cta_url.startsWith("__OP_CONFIG__")) {
+          try {
+            const extra = JSON.parse(data.hero_cta_url.replace("__OP_CONFIG__", ""));
+            Object.assign(data, extra);
+          } catch (e) {
+            console.warn("[CMS Settings] Notice parsing __OP_CONFIG__:", e);
+          }
+        }
         saveLocalSiteSettings(data);
         return { success: true, settings: data, isLive: true };
       }
@@ -617,35 +636,80 @@ export async function fetchSiteSettings() {
 }
 
 /**
- * Update singleton site settings
+ * Update singleton site settings (WhatsApp, Hero Banner, Video, Jam & Lokasi)
  */
 export async function updateSiteSettings(settingsData) {
-  const cleanWhatsApp = (settingsData.whatsapp_number || "").replace(/[^0-9]/g, "");
+  const current = getLocalSiteSettings();
+  const cleanWhatsApp = (settingsData.whatsapp_number !== undefined 
+    ? settingsData.whatsapp_number 
+    : current.whatsapp_number || "").replace(/[^0-9]/g, "");
 
-  const payload = {
-    brand_name: settingsData.brand_name || "Siomay Online",
+  const opConfig = {
+    operational_status: settingsData.operational_status || current.operational_status || "buka",
+    operational_status_label: (settingsData.operational_status_label !== undefined ? settingsData.operational_status_label : current.operational_status_label || "Buka Hari Ini:").trim(),
+    operational_open_time: settingsData.operational_open_time || current.operational_open_time || "10:00",
+    operational_close_time: settingsData.operational_close_time || current.operational_close_time || "21:00",
+    operational_timezone: settingsData.operational_timezone || current.operational_timezone || "WIB",
+    operational_days: settingsData.operational_days || current.operational_days || "Setiap Hari",
+    operational_hours: (settingsData.operational_hours !== undefined ? settingsData.operational_hours : current.operational_hours || "10.00 — 21.00 WIB").trim(),
+    delivery_area: (settingsData.delivery_area !== undefined ? settingsData.delivery_area : current.delivery_area || "Klaten & Sekitarnya").trim(),
+    strip_announcement: (settingsData.strip_announcement !== undefined ? settingsData.strip_announcement : current.strip_announcement || "100% Ikan Tenggiri • Fresh Setiap Hari").trim()
+  };
+
+  const fullPayload = {
+    brand_name: settingsData.brand_name || current.brand_name || "Siomay Online",
     whatsapp_number: cleanWhatsApp || "628XXXXXXXXXX",
-    default_order_message: (settingsData.default_order_message || "").trim(),
-    hero_title: (settingsData.hero_title || "").trim(),
-    hero_subtitle: (settingsData.hero_subtitle || "").trim(),
-    hero_badge: (settingsData.hero_badge || "SIOMAY ONLINE").trim(),
-    hero_cta_text: (settingsData.hero_cta_text || "Pesan via WhatsApp").trim(),
-    hero_cta_url: (settingsData.hero_cta_url || "").trim() || null,
-    hero_image_url: settingsData.hero_image_url || "/images/hero.jpg",
-    promo_video_url: (settingsData.promo_video_url || "").trim() || null,
-    promo_video_poster_url: (settingsData.promo_video_poster_url || "").trim() || null,
+    default_order_message: (settingsData.default_order_message !== undefined ? settingsData.default_order_message : current.default_order_message || "").trim(),
+    hero_title: (settingsData.hero_title !== undefined ? settingsData.hero_title : current.hero_title || "").trim(),
+    hero_subtitle: (settingsData.hero_subtitle !== undefined ? settingsData.hero_subtitle : current.hero_subtitle || "").trim(),
+    hero_badge: (settingsData.hero_badge !== undefined ? settingsData.hero_badge : current.hero_badge || "SIOMAY ONLINE").trim(),
+    hero_cta_text: (settingsData.hero_cta_text !== undefined ? settingsData.hero_cta_text : current.hero_cta_text || "Pesan via WhatsApp").trim(),
+    hero_image_url: settingsData.hero_image_url || current.hero_image_url || "/images/hero.jpg",
+    promo_video_url: (settingsData.promo_video_url !== undefined ? settingsData.promo_video_url : current.promo_video_url || "").trim() || null,
+    promo_video_poster_url: (settingsData.promo_video_poster_url !== undefined ? settingsData.promo_video_poster_url : current.promo_video_poster_url || "").trim() || null,
+    hero_cta_url: `__OP_CONFIG__${JSON.stringify(opConfig)}`,
+    ...opConfig,
     updated_at: new Date().toISOString()
   };
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
+      // 1. Try upsert with all columns
+      let { data, error } = await supabase
         .from("site_settings")
-        .upsert({ id: 1, ...payload })
+        .upsert({ id: 1, ...fullPayload })
         .select()
         .single();
 
+      // 2. If new columns not yet in DB schema cache, fall back to core columns + packed hero_cta_url
+      if (error && error.message && error.message.includes("column of 'site_settings' in the schema cache")) {
+        const corePayload = {
+          brand_name: fullPayload.brand_name,
+          whatsapp_number: fullPayload.whatsapp_number,
+          default_order_message: fullPayload.default_order_message,
+          hero_title: fullPayload.hero_title,
+          hero_subtitle: fullPayload.hero_subtitle,
+          hero_badge: fullPayload.hero_badge,
+          hero_cta_text: fullPayload.hero_cta_text,
+          hero_cta_url: fullPayload.hero_cta_url, // packed with opConfig
+          hero_image_url: fullPayload.hero_image_url,
+          promo_video_url: fullPayload.promo_video_url,
+          promo_video_poster_url: fullPayload.promo_video_poster_url,
+          updated_at: fullPayload.updated_at
+        };
+
+        const fallbackRes = await supabase
+          .from("site_settings")
+          .upsert({ id: 1, ...corePayload })
+          .select()
+          .single();
+
+        data = fallbackRes.data;
+        error = fallbackRes.error;
+      }
+
       if (!error && data) {
+        Object.assign(data, opConfig);
         saveLocalSiteSettings(data);
         return { success: true, settings: data, isLive: true };
       }
@@ -654,8 +718,8 @@ export async function updateSiteSettings(settingsData) {
     }
   }
 
-  saveLocalSiteSettings(payload);
-  return { success: true, settings: { id: 1, ...payload }, isLocal: true };
+  saveLocalSiteSettings(fullPayload);
+  return { success: true, settings: { id: 1, ...fullPayload }, isLocal: true };
 }
 
 // =============================================================================

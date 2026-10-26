@@ -406,6 +406,43 @@ async function syncPublicWebsiteFromBackend() {
       if (s.promo_video_url) {
         renderPromoVideoOnPublicSite(s.promo_video_url, s.promo_video_poster_url);
       }
+
+      // C. Operational Hours, Store Location & Announcement Strip
+      const stripStatusLabel = document.getElementById("stripStatusLabel");
+      const stripHoursVal = document.getElementById("stripHoursVal");
+      const stripLocationVal = document.getElementById("stripLocationVal");
+      const stripAnnouncementVal = document.getElementById("stripAnnouncementVal");
+      const stripStatusDot = document.getElementById("stripStatusDot");
+      const footerHoursVal = document.getElementById("footerHoursVal");
+      const footerAreaVal = document.getElementById("footerAreaVal");
+
+      if (stripStatusLabel && s.operational_status_label) {
+        stripStatusLabel.textContent = s.operational_status_label;
+      }
+      if (stripHoursVal && s.operational_hours) {
+        stripHoursVal.textContent = s.operational_hours;
+      }
+      if (stripLocationVal && s.delivery_area) {
+        stripLocationVal.textContent = s.delivery_area;
+      }
+      if (stripAnnouncementVal && s.strip_announcement) {
+        stripAnnouncementVal.textContent = s.strip_announcement;
+      }
+      if (stripStatusDot && s.operational_status) {
+        stripStatusDot.classList.remove("status-closed", "status-paused");
+        if (s.operational_status === "tutup") {
+          stripStatusDot.classList.add("status-closed");
+        } else if (s.operational_status === "istirahat") {
+          stripStatusDot.classList.add("status-paused");
+        }
+      }
+      if (footerHoursVal && (s.operational_hours || s.operational_days)) {
+        const prefix = s.operational_days ? `${s.operational_days}, ` : "";
+        footerHoursVal.textContent = `${prefix}${s.operational_hours || "10.00 — 21.00 WIB"}`;
+      }
+      if (footerAreaVal && s.delivery_area) {
+        footerAreaVal.textContent = s.delivery_area;
+      }
     }
   } catch (err) {
     console.info("[Siomay Online] Menggunakan konten default:", err);

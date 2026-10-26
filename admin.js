@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initSidebarNavigation();
   initMenuHandlers();
   initContentHandlers();
+  initOperationsHandlers();
   initWhatsAppHandlers();
   initReviewHandlers();
   initOrdersHandlers();
@@ -169,6 +170,7 @@ function initSidebarNavigation() {
     viewOverview: "Ringkasan Dashboard",
     viewMenu: "Kelola Menu Makanan",
     viewContent: "Banner & Video Promosi",
+    viewOperations: "Pengaturan Jam Operasional & Lokasi",
     viewWhatsApp: "Pengaturan WhatsApp & Pesanan",
     viewReviews: "Moderasi Ulasan Pelanggan"
   };
@@ -249,6 +251,13 @@ function initSidebarNavigation() {
     });
   }
 
+  const btnQuickOps = document.getElementById("btnQuickEditOperations");
+  if (btnQuickOps) {
+    btnQuickOps.addEventListener("click", () => {
+      switchView("viewOperations");
+    });
+  }
+
   if (btnRefreshOverview) {
     btnRefreshOverview.addEventListener("click", async () => {
       await loadAllCmsData();
@@ -276,12 +285,17 @@ function updateOverviewMetrics() {
   const metricPending = document.getElementById("metricPendingReviews");
   const metricApproved = document.getElementById("metricApprovedReviews");
   const metricOrders = document.getElementById("metricTotalOrders");
+  const metricOperational = document.getElementById("metricOperationalHours");
   const sidebarBadge = document.getElementById("sidebarPendingReviewsBadge");
   const sidebarOrdersBadge = document.getElementById("sidebarPendingOrdersBadge");
 
   if (metricMenu) metricMenu.textContent = menuItems.length;
   if (metricWa && siteSettings) {
     metricWa.textContent = siteSettings.whatsapp_number || "628XXXXXXXXXX";
+  }
+  if (metricOperational && siteSettings) {
+    const area = siteSettings.delivery_area ? ` (${siteSettings.delivery_area})` : "";
+    metricOperational.textContent = (siteSettings.operational_hours || "10.00 — 21.00 WIB") + area;
   }
 
   const pendingCount = allReviews.filter(r => r.status === "pending").length;
@@ -919,6 +933,29 @@ async function loadSiteSettings() {
   if (waInput) waInput.value = siteSettings.whatsapp_number || "628XXXXXXXXXX";
   if (defaultMsgInput) defaultMsgInput.value = siteSettings.default_order_message || "";
   updateWhatsAppLinkPreview();
+
+  // Populate Operations Form (Jam & Lokasi Toko)
+  const statusSelect = document.getElementById("settingOperationalStatus");
+  const statusLabelInput = document.getElementById("settingStatusLabel");
+  const openTimeInput = document.getElementById("settingOpenTime");
+  const closeTimeInput = document.getElementById("settingCloseTime");
+  const timezoneSelect = document.getElementById("settingTimezone");
+  const daysInput = document.getElementById("settingOperationalDays");
+  const hoursTextInput = document.getElementById("settingOperationalHoursText");
+  const deliveryAreaInput = document.getElementById("settingDeliveryArea");
+  const announcementInput = document.getElementById("settingStripAnnouncement");
+
+  if (statusSelect) statusSelect.value = siteSettings.operational_status || "buka";
+  if (statusLabelInput) statusLabelInput.value = siteSettings.operational_status_label || "Buka Hari Ini:";
+  if (openTimeInput) openTimeInput.value = siteSettings.operational_open_time || "10:00";
+  if (closeTimeInput) closeTimeInput.value = siteSettings.operational_close_time || "21:00";
+  if (timezoneSelect) timezoneSelect.value = siteSettings.operational_timezone || "WIB";
+  if (daysInput) daysInput.value = siteSettings.operational_days || "Setiap Hari";
+  if (hoursTextInput) hoursTextInput.value = siteSettings.operational_hours || "10.00 — 21.00 WIB";
+  if (deliveryAreaInput) deliveryAreaInput.value = siteSettings.delivery_area || "Klaten & Sekitarnya";
+  if (announcementInput) announcementInput.value = siteSettings.strip_announcement || "100% Ikan Tenggiri • Fresh Setiap Hari";
+
+  updateOperationsPreview();
 }
 
 async function handleSaveHeroContent() {
@@ -968,7 +1005,185 @@ async function handleSaveHeroContent() {
 }
 
 // =============================================================================
-// 6. WHATSAPP SETTINGS
+// 6. OPERATIONAL HOURS & STORE LOCATION SETTINGS
+// =============================================================================
+function initOperationsHandlers() {
+  const form = document.getElementById("operationsSettingsForm");
+  const btnSave = document.getElementById("btnSaveOperations");
+  const btnAutoHours = document.getElementById("btnAutoGenerateHours");
+
+  const statusSelect = document.getElementById("settingOperationalStatus");
+  const statusLabelInput = document.getElementById("settingStatusLabel");
+  const openTimeInput = document.getElementById("settingOpenTime");
+  const closeTimeInput = document.getElementById("settingCloseTime");
+  const timezoneSelect = document.getElementById("settingTimezone");
+  const daysInput = document.getElementById("settingOperationalDays");
+  const hoursTextInput = document.getElementById("settingOperationalHoursText");
+  const deliveryAreaInput = document.getElementById("settingDeliveryArea");
+  const announcementInput = document.getElementById("settingStripAnnouncement");
+
+  // Real-time preview update on any input change
+  const inputsToListen = [
+    statusSelect, statusLabelInput, openTimeInput, closeTimeInput, 
+    timezoneSelect, daysInput, hoursTextInput, deliveryAreaInput, announcementInput
+  ];
+  inputsToListen.forEach(input => {
+    if (input) {
+      input.addEventListener("input", updateOperationsPreview);
+      input.addEventListener("change", updateOperationsPreview);
+    }
+  });
+
+  // Auto-generate hours text from open & close time
+  if (btnAutoHours) {
+    btnAutoHours.addEventListener("click", () => {
+      const open = (openTimeInput?.value || "10:00").replace(":", ".");
+      const close = (closeTimeInput?.value || "21:00").replace(":", ".");
+      const tz = timezoneSelect?.value || "WIB";
+      const generated = `${open} — ${close} ${tz}`;
+      if (hoursTextInput) {
+        hoursTextInput.value = generated;
+        updateOperationsPreview();
+        showToast(`Teks jam operasional dibuat: "${generated}"`, "info");
+      }
+    });
+  }
+
+  // Handle status select auto-updating label if default
+  if (statusSelect) {
+    statusSelect.addEventListener("change", () => {
+      if (statusSelect.value === "tutup") {
+        if (statusLabelInput && (statusLabelInput.value === "Buka Hari Ini:" || statusLabelInput.value === "Buka Sekarang:")) {
+          statusLabelInput.value = "Tutup Sementara:";
+        }
+      } else if (statusSelect.value === "istirahat") {
+        if (statusLabelInput && (statusLabelInput.value === "Buka Hari Ini:" || statusLabelInput.value === "Tutup Sementara:")) {
+          statusLabelInput.value = "Istirahat:";
+        }
+      } else if (statusSelect.value === "buka") {
+        if (statusLabelInput && (statusLabelInput.value === "Tutup Sementara:" || statusLabelInput.value === "Istirahat:")) {
+          statusLabelInput.value = "Buka Hari Ini:";
+        }
+      }
+      updateOperationsPreview();
+    });
+  }
+
+  // Save Operations Settings
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await handleSaveOperations();
+    });
+  }
+
+  if (btnSave) {
+    btnSave.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await handleSaveOperations();
+    });
+  }
+}
+
+function updateOperationsPreview() {
+  const statusSelect = document.getElementById("settingOperationalStatus");
+  const statusLabelInput = document.getElementById("settingStatusLabel");
+  const hoursTextInput = document.getElementById("settingOperationalHoursText");
+  const deliveryAreaInput = document.getElementById("settingDeliveryArea");
+  const announcementInput = document.getElementById("settingStripAnnouncement");
+
+  const previewDot = document.getElementById("previewStripDot");
+  const previewLabel = document.getElementById("previewStripStatusLabel");
+  const previewHours = document.getElementById("previewStripHours");
+  const previewLocation = document.getElementById("previewStripLocation");
+  const previewAnnouncement = document.getElementById("previewStripAnnouncement");
+
+  const status = statusSelect ? statusSelect.value : "buka";
+  const label = statusLabelInput ? (statusLabelInput.value.trim() || "Buka Hari Ini:") : "Buka Hari Ini:";
+  const hours = hoursTextInput ? (hoursTextInput.value.trim() || "10.00 — 21.00 WIB") : "10.00 — 21.00 WIB";
+  const location = deliveryAreaInput ? (deliveryAreaInput.value.trim() || "Klaten & Sekitarnya") : "Klaten & Sekitarnya";
+  const announcement = announcementInput ? (announcementInput.value.trim() || "100% Ikan Tenggiri • Fresh Setiap Hari") : "100% Ikan Tenggiri • Fresh Setiap Hari";
+
+  if (previewDot) {
+    previewDot.classList.remove("status-closed", "status-paused");
+    if (status === "tutup") previewDot.classList.add("status-closed");
+    else if (status === "istirahat") previewDot.classList.add("status-paused");
+  }
+
+  if (previewLabel) previewLabel.textContent = label;
+  if (previewHours) previewHours.textContent = hours;
+  if (previewLocation) previewLocation.textContent = location;
+  if (previewAnnouncement) previewAnnouncement.textContent = announcement;
+}
+
+async function handleSaveOperations() {
+  const btnSave = document.getElementById("btnSaveOperations");
+  const statusSelect = document.getElementById("settingOperationalStatus");
+  const statusLabelInput = document.getElementById("settingStatusLabel");
+  const openTimeInput = document.getElementById("settingOpenTime");
+  const closeTimeInput = document.getElementById("settingCloseTime");
+  const timezoneSelect = document.getElementById("settingTimezone");
+  const daysInput = document.getElementById("settingOperationalDays");
+  const hoursTextInput = document.getElementById("settingOperationalHoursText");
+  const deliveryAreaInput = document.getElementById("settingDeliveryArea");
+  const announcementInput = document.getElementById("settingStripAnnouncement");
+
+  const operational_status = statusSelect ? statusSelect.value : "buka";
+  const operational_status_label = statusLabelInput ? statusLabelInput.value.trim() : "Buka Hari Ini:";
+  const operational_open_time = openTimeInput ? openTimeInput.value : "10:00";
+  const operational_close_time = closeTimeInput ? closeTimeInput.value : "21:00";
+  const operational_timezone = timezoneSelect ? timezoneSelect.value : "WIB";
+  const operational_days = daysInput ? daysInput.value.trim() : "Setiap Hari";
+  const operational_hours = hoursTextInput ? hoursTextInput.value.trim() : "10.00 — 21.00 WIB";
+  const delivery_area = deliveryAreaInput ? deliveryAreaInput.value.trim() : "Klaten & Sekitarnya";
+  const strip_announcement = announcementInput ? announcementInput.value.trim() : "100% Ikan Tenggiri • Fresh Setiap Hari";
+
+  if (!delivery_area) {
+    showToast("Wilayah jangkauan pengiriman (delivery area) wajib diisi.", "error");
+    return;
+  }
+  if (!operational_hours) {
+    showToast("Teks jam operasional wajib diisi.", "error");
+    return;
+  }
+
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.textContent = "Menyimpan Peraturan...";
+  }
+
+  try {
+    const res = await updateSiteSettings({
+      operational_status,
+      operational_status_label,
+      operational_open_time,
+      operational_close_time,
+      operational_timezone,
+      operational_days,
+      operational_hours,
+      delivery_area,
+      strip_announcement
+    });
+
+    if (res.success) {
+      siteSettings = res.settings;
+      updateOverviewMetrics();
+      showToast("Pengaturan jam operasional dan lokasi toko berhasil diperbarui!", "success");
+    } else {
+      showToast("Gagal menyimpan pengaturan: " + (res.error || "Terjadi kesalahan"), "error");
+    }
+  } catch (err) {
+    showToast("Terjadi kendala saat menyimpan: " + err.message, "error");
+  } finally {
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.textContent = "Simpan Pengaturan Jam & Lokasi";
+    }
+  }
+}
+
+// =============================================================================
+// 7. WHATSAPP SETTINGS
 // =============================================================================
 function initWhatsAppHandlers() {
   const form = document.getElementById("whatsAppSettingsForm");
