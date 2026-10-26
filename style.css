@@ -5578,6 +5578,23 @@ ul, ol {
 /* AI Studio Modal Styling */
 .ai-studio-modal {
   max-width: 820px !important;
+  width: 95% !important;
+  z-index: 1060 !important;
+}
+
+#aiStudioModalOverlay.open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  z-index: 1055 !important;
+}
+
+#aiStudioModal.open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  z-index: 1060 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
 }
 
 .ai-studio-toolbar {

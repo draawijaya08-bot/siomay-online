@@ -1537,8 +1537,15 @@ function initAiStudioHandlers() {
   const btnDownloadPng = document.getElementById("btnDownloadAiResult");
 
   const openModal = (initialSourceUrl = null) => {
-    if (modal) modal.style.display = "block";
-    if (overlay) overlay.style.display = "block";
+    if (modal) {
+      modal.style.display = "flex";
+      modal.classList.add("open");
+    }
+    if (overlay) {
+      overlay.style.display = "block";
+      overlay.classList.add("open");
+    }
+    document.body.style.overflow = "hidden";
     resetAiStudioState();
 
     const targetUrl = initialSourceUrl || document.getElementById("settingLogoUrl")?.value || "/images/logo.png";
@@ -1548,13 +1555,26 @@ function initAiStudioHandlers() {
   };
 
   const closeModal = () => {
-    if (modal) modal.style.display = "none";
-    if (overlay) overlay.style.display = "none";
+    if (modal) {
+      modal.classList.remove("open");
+      modal.style.display = "none";
+    }
+    if (overlay) {
+      overlay.classList.remove("open");
+      overlay.style.display = "none";
+    }
+    document.body.style.overflow = "";
   };
 
   if (btnClose) btnClose.addEventListener("click", closeModal);
   if (btnCancel) btnCancel.addEventListener("click", closeModal);
   if (overlay) overlay.addEventListener("click", closeModal);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal && modal.classList.contains("open")) {
+      closeModal();
+    }
+  });
 
   if (btnLaunchBanner) {
     btnLaunchBanner.addEventListener("click", () => openModal(document.getElementById("settingLogoUrl")?.value));
@@ -1594,6 +1614,28 @@ function initAiStudioHandlers() {
       loadSourceImage(url);
     });
   }
+
+  // Drag and drop image onto preview zones
+  const dropZones = [document.getElementById("aiResultWrapper"), document.querySelector(".original-wrapper")].filter(Boolean);
+  dropZones.forEach(zone => {
+    zone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      zone.style.borderColor = "#de4a1d";
+    });
+    zone.addEventListener("dragleave", () => {
+      zone.style.borderColor = "";
+    });
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.style.borderColor = "";
+      const file = e.dataTransfer?.files?.[0];
+      if (file && file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (ev) => loadSourceImage(ev.target.result);
+        reader.readAsDataURL(file);
+      }
+    });
+  });
 
   // Sliders with debounced execution
   if (sensitivityRange) {
@@ -1637,7 +1679,7 @@ function initAiStudioHandlers() {
     if (btnDownloadPng) btnDownloadPng.disabled = true;
   }
 
-  function loadSourceImage(src) {
+  async function loadSourceImage(src) {
     const originalImg = document.getElementById("aiStudioOriginalPreview");
     const emptyOriginal = document.getElementById("aiStudioOriginalEmpty");
     const dimLabel = document.getElementById("aiOriginalDimensions");
@@ -1645,25 +1687,54 @@ function initAiStudioHandlers() {
 
     if (processingEl) processingEl.style.display = "flex";
 
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      currentAiSourceImg = img;
-      if (originalImg) {
-        originalImg.src = src;
-        originalImg.style.display = "block";
-      }
-      if (emptyOriginal) emptyOriginal.style.display = "none";
-      if (dimLabel) dimLabel.textContent = `${img.naturalWidth} × ${img.naturalHeight} px`;
+    try {
+      let finalSrc = src;
 
-      resetAiStudioState();
-      executeAiBackgroundRemoval();
-    };
-    img.onerror = () => {
+      // If remote image (http/https), fetch as blob & convert to Data URL to avoid canvas CORS tainting
+      if (src && (src.startsWith("http://") || src.startsWith("https://"))) {
+        try {
+          const resp = await fetch(src, { mode: "cors" });
+          if (resp.ok) {
+            const blob = await resp.blob();
+            finalSrc = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+          }
+        } catch (fetchErr) {
+          console.warn("[AI Studio] Fetch remote image fallback notice:", fetchErr);
+        }
+      }
+
+      const img = new Image();
+      if (finalSrc.startsWith("http://") || finalSrc.startsWith("https://")) {
+        img.crossOrigin = "anonymous";
+      }
+
+      img.onload = () => {
+        currentAiSourceImg = img;
+        if (originalImg) {
+          originalImg.src = finalSrc;
+          originalImg.style.display = "block";
+        }
+        if (emptyOriginal) emptyOriginal.style.display = "none";
+        if (dimLabel) dimLabel.textContent = `${img.naturalWidth} × ${img.naturalHeight} px`;
+
+        resetAiStudioState();
+        executeAiBackgroundRemoval();
+      };
+
+      img.onerror = () => {
+        if (processingEl) processingEl.style.display = "none";
+        showToast("Gagal memuat gambar. Silakan gunakan tombol 'Pilih Gambar dari Komputer' untuk mengunggah file langsung.", "error");
+      };
+
+      img.src = finalSrc;
+    } catch (err) {
       if (processingEl) processingEl.style.display = "none";
-      showToast("Gagal memuat gambar ke AI Studio.", "error");
-    };
-    img.src = src;
+      showToast("Kendala memuat gambar: " + err.message, "error");
+    }
   }
 
   function executeAiBackgroundRemoval() {
