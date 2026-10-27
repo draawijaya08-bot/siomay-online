@@ -10,22 +10,26 @@
  * 6. SITE INTERACTION: Navbar scroll, mobile nav, scroll reveals, active spy.
  */
 
+import { getLocalSiteSettings } from "./cmsService.js";
+
 // =============================================================================
 // 1. BRAND CONFIGURATION
 // =============================================================================
+const initialSettings = typeof window !== "undefined" ? getLocalSiteSettings() : null;
+
 export const CONFIG = {
-  brandName: "Siomay Online",
+  brandName: initialSettings?.brand_name || "Siomay Online",
   
   /**
    * Nomor WhatsApp resmi untuk menerima pesanan pelanggan.
    * Format: Nomor internasional tanpa tanda plus (+), diawali 62.
-   * Ganti "628XXXXXXXXXX" dengan nomor WhatsApp bisnismu yang sebenarnya.
+   * Disinkronkan dinamis dari CMS (Database Supabase & buffer lokal).
    */
-  whatsappNumber: "628XXXXXXXXXX",
+  whatsappNumber: initialSettings?.whatsapp_number || "628XXXXXXXXXX",
   
   whatsappBaseUrl: "https://wa.me/",
   
-  defaultOrderMessage: "Halo Siomay Online, saya ingin pesan siomay fresh untuk diantar."
+  defaultOrderMessage: initialSettings?.default_order_message || "Halo Siomay Online, saya ingin pesan siomay fresh untuk diantar."
 };
 
 // =============================================================================
@@ -297,6 +301,7 @@ import { fetchAllMenuItems, fetchSiteSettings } from "./cmsService.js";
 
 let isSyncingBackend = false;
 let syncBackendTimer = null;
+let syncBackendNeededAgain = false;
 
 function debouncedSyncPublicWebsiteFromBackend() {
   if (syncBackendTimer) clearTimeout(syncBackendTimer);
@@ -305,173 +310,221 @@ function debouncedSyncPublicWebsiteFromBackend() {
   }, 250);
 }
 
+/**
+ * Apply Site Settings (WhatsApp, Hero, Operational hours, Branding) directly to UI & CONFIG
+ */
+export function applySiteSettingsToUI(s) {
+  if (!s) return;
+
+  if (s.whatsapp_number) {
+    CONFIG.whatsappNumber = s.whatsapp_number;
+  }
+  if (s.default_order_message) {
+    CONFIG.defaultOrderMessage = s.default_order_message;
+  }
+  if (s.brand_name) {
+    CONFIG.brandName = s.brand_name;
+  }
+
+  if (typeof document === "undefined") return;
+
+  // Update generic WhatsApp action links throughout the site
+  initWhatsAppLinks();
+
+  // Hero Headline
+  const heroHeadline = document.querySelector(".hero-headline");
+  if (heroHeadline && s.hero_title) {
+    heroHeadline.innerHTML = `<span class="headline-main">${s.hero_title}</span>`;
+  }
+
+  // Hero Description
+  const heroDesc = document.querySelector(".hero-description");
+  if (heroDesc && s.hero_subtitle) {
+    heroDesc.textContent = s.hero_subtitle;
+  }
+
+  // Hero Badge
+  const heroBadge = document.querySelector(".hero-label-badge");
+  if (heroBadge && s.hero_badge) {
+    heroBadge.textContent = s.hero_badge;
+  }
+
+  // Hero CTA Button
+  const heroCtaSpan = document.querySelector(".btn-hero[data-cta='whatsapp-general'] span");
+  if (heroCtaSpan && s.hero_cta_text) {
+    heroCtaSpan.textContent = s.hero_cta_text;
+  }
+
+  // Hero Image
+  const heroImg = document.querySelector(".hero-image");
+  if (heroImg && s.hero_image_url) {
+    heroImg.src = s.hero_image_url;
+  }
+
+  // Promotional Video
+  if (s.promo_video_url) {
+    renderPromoVideoOnPublicSite(s.promo_video_url, s.promo_video_poster_url);
+  }
+
+  // C. Operational Hours, Store Location & Announcement Strip
+  const stripStatusLabel = document.getElementById("stripStatusLabel");
+  const stripHoursVal = document.getElementById("stripHoursVal");
+  const stripLocationVal = document.getElementById("stripLocationVal");
+  const stripAnnouncementVal = document.getElementById("stripAnnouncementVal");
+  const stripStatusDot = document.getElementById("stripStatusDot");
+  const footerHoursVal = document.getElementById("footerHoursVal");
+  const footerAreaVal = document.getElementById("footerAreaVal");
+
+  if (stripStatusLabel && s.operational_status_label) {
+    stripStatusLabel.textContent = s.operational_status_label;
+  }
+  if (stripHoursVal && s.operational_hours) {
+    stripHoursVal.textContent = s.operational_hours;
+  }
+  if (stripLocationVal && s.delivery_area) {
+    stripLocationVal.textContent = s.delivery_area;
+  }
+  if (stripAnnouncementVal && s.strip_announcement) {
+    stripAnnouncementVal.textContent = s.strip_announcement;
+  }
+  if (stripStatusDot && s.operational_status) {
+    stripStatusDot.classList.remove("status-closed", "status-paused");
+    if (s.operational_status === "tutup") {
+      stripStatusDot.classList.add("status-closed");
+    } else if (s.operational_status === "istirahat") {
+      stripStatusDot.classList.add("status-paused");
+    }
+  }
+  if (footerHoursVal && (s.operational_hours || s.operational_days)) {
+    const prefix = s.operational_days ? `${s.operational_days}, ` : "";
+    footerHoursVal.textContent = `${prefix}${s.operational_hours || "10.00 — 21.00 WIB"}`;
+  }
+  if (footerAreaVal && s.delivery_area) {
+    footerAreaVal.textContent = s.delivery_area;
+  }
+
+  // D. Branding (Website Logo & Browser Favicon)
+  if (s.logo_url) {
+    document.querySelectorAll(".brand-logo-img").forEach(img => {
+      img.src = s.logo_url;
+    });
+  }
+  if (s.favicon_url) {
+    document.querySelectorAll("link[rel*='icon']").forEach(link => {
+      link.href = s.favicon_url;
+    });
+  }
+}
+
 // =============================================================================
 // 5. DOM INITIALIZATION & DYNAMIC CMS SYNC
 // =============================================================================
-if (typeof document !== "undefined") {
-  document.addEventListener("DOMContentLoaded", () => {
-    // 1. Instant render from local defaults (Zero layout shift / offline resilience)
-    renderMenuCards();
-    initCartDrawer();
-    updateCartUI();
-    initReviewsSection();
-    initWhatsAppLinks();
-    initNavbarScroll();
-    initMobileMenu();
-    initScrollSpy();
-    initScrollReveal();
+function initPublicWebsite() {
+  // 1. Instant render from local defaults & localStorage buffer (Zero layout shift / offline resilience)
+  applySiteSettingsToUI(getLocalSiteSettings());
+  renderMenuCards();
+  initCartDrawer();
+  updateCartUI();
+  initReviewsSection();
+  initWhatsAppLinks();
+  initNavbarScroll();
+  initMobileMenu();
+  initScrollSpy();
+  initScrollReveal();
 
-    // 2. Fetch live updates from Supabase CMS (Menu, Banner, Promo Video, WhatsApp)
-    syncPublicWebsiteFromBackend();
+  // 2. Fetch live updates from Supabase CMS (Menu, Banner, Promo Video, WhatsApp)
+  syncPublicWebsiteFromBackend();
 
-    // 3. Auto-sync on Admin changes (cross-tab storage and local custom events)
-    if (typeof window !== "undefined") {
-      window.addEventListener("storage", (e) => {
-        if (e.key === "siomay_menu_items_v2" || e.key === "siomay_site_settings_v1") {
-          debouncedSyncPublicWebsiteFromBackend();
+  // 3. Auto-sync on Admin changes (cross-tab storage and local custom events)
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", (e) => {
+      if (e.key === "siomay_site_settings_v1") {
+        try {
+          const fresh = e.newValue ? JSON.parse(e.newValue) : getLocalSiteSettings();
+          applySiteSettingsToUI(fresh);
+        } catch {
+          applySiteSettingsToUI(getLocalSiteSettings());
         }
-      });
-      window.addEventListener("siomay_menu_updated", () => {
+      }
+      if (e.key === "siomay_menu_items_v2" || e.key === "siomay_site_settings_v1") {
         debouncedSyncPublicWebsiteFromBackend();
-      });
-      window.addEventListener("siomay_settings_updated", () => {
-        debouncedSyncPublicWebsiteFromBackend();
-      });
-    }
-  });
+      }
+    });
+
+    window.addEventListener("siomay_settings_updated", (e) => {
+      if (e.detail?.settings) {
+        applySiteSettingsToUI(e.detail.settings);
+      } else {
+        applySiteSettingsToUI(getLocalSiteSettings());
+      }
+      debouncedSyncPublicWebsiteFromBackend();
+    });
+
+    window.addEventListener("siomay_menu_updated", () => {
+      debouncedSyncPublicWebsiteFromBackend();
+    });
+  }
+}
+
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initPublicWebsite);
+  } else {
+    initPublicWebsite();
+  }
 }
 
 /**
  * Synchronize live content from Supabase backend
  */
 async function syncPublicWebsiteFromBackend() {
-  if (isSyncingBackend) return;
+  if (isSyncingBackend) {
+    syncBackendNeededAgain = true;
+    return;
+  }
   isSyncingBackend = true;
   try {
-    const [menuRes, settingsRes] = await Promise.all([
-      fetchAllMenuItems(),
-      fetchSiteSettings()
-    ]);
-
-    // A. Sync Food Menu
-    if (menuRes.success && menuRes.items && menuRes.items.length > 0) {
-      activeProducts = menuRes.items.map(item => ({
-        id: item.slug || item.id,
-        dbId: item.id,
-        name: item.name,
-        price: item.price,
-        desc: item.description,
-        image: item.image_url || "/images/menu-original.jpg",
-        badge: item.badge,
-        portion: item.portion || "Porsi Mantap",
-        rating: Number(item.rating) || 4.9,
-        isBestSeller: Boolean(item.is_best_seller),
-        isAvailable: item.is_available !== false
-      }));
-      renderMenuCards();
-      updateCartUI();
+    // 1. Independent Site Settings Sync (WhatsApp, Banner, Promo Video, Hours, Branding)
+    try {
+      const settingsRes = await fetchSiteSettings();
+      if (settingsRes.success && settingsRes.settings) {
+        applySiteSettingsToUI(settingsRes.settings);
+      }
+    } catch (err) {
+      console.warn("[Main Public Sync] Notice sync settings:", err);
     }
 
-    // B. Sync Site Settings (WhatsApp, Banner, Promo Video)
-    if (settingsRes.success && settingsRes.settings) {
-      const s = settingsRes.settings;
-
-      if (s.whatsapp_number) {
-        CONFIG.whatsappNumber = s.whatsapp_number;
+    // 2. Independent Food Menu Sync
+    try {
+      const menuRes = await fetchAllMenuItems();
+      if (menuRes.success && menuRes.items && menuRes.items.length > 0) {
+        activeProducts = menuRes.items.map(item => ({
+          id: item.slug || item.id,
+          dbId: item.id,
+          name: item.name,
+          price: item.price,
+          desc: item.description,
+          image: item.image_url || "/images/menu-original.jpg",
+          badge: item.badge,
+          portion: item.portion || "Porsi Mantap",
+          rating: Number(item.rating) || 4.9,
+          isBestSeller: Boolean(item.is_best_seller),
+          isAvailable: item.is_available !== false
+        }));
+        renderMenuCards();
+        updateCartUI();
       }
-      if (s.default_order_message) {
-        CONFIG.defaultOrderMessage = s.default_order_message;
-      }
-      initWhatsAppLinks();
-
-      // Hero Headline
-      const heroHeadline = document.querySelector(".hero-headline");
-      if (heroHeadline && s.hero_title) {
-        heroHeadline.innerHTML = `<span class="headline-main">${s.hero_title}</span>`;
-      }
-
-      // Hero Description
-      const heroDesc = document.querySelector(".hero-description");
-      if (heroDesc && s.hero_subtitle) {
-        heroDesc.textContent = s.hero_subtitle;
-      }
-
-      // Hero Badge
-      const heroBadge = document.querySelector(".hero-label-badge");
-      if (heroBadge && s.hero_badge) {
-        heroBadge.textContent = s.hero_badge;
-      }
-
-      // Hero CTA Button
-      const heroCtaSpan = document.querySelector(".btn-hero[data-cta='whatsapp-general'] span");
-      if (heroCtaSpan && s.hero_cta_text) {
-        heroCtaSpan.textContent = s.hero_cta_text;
-      }
-
-      // Hero Image
-      const heroImg = document.querySelector(".hero-image");
-      if (heroImg && s.hero_image_url) {
-        heroImg.src = s.hero_image_url;
-      }
-
-      // Promotional Video
-      if (s.promo_video_url) {
-        renderPromoVideoOnPublicSite(s.promo_video_url, s.promo_video_poster_url);
-      }
-
-      // C. Operational Hours, Store Location & Announcement Strip
-      const stripStatusLabel = document.getElementById("stripStatusLabel");
-      const stripHoursVal = document.getElementById("stripHoursVal");
-      const stripLocationVal = document.getElementById("stripLocationVal");
-      const stripAnnouncementVal = document.getElementById("stripAnnouncementVal");
-      const stripStatusDot = document.getElementById("stripStatusDot");
-      const footerHoursVal = document.getElementById("footerHoursVal");
-      const footerAreaVal = document.getElementById("footerAreaVal");
-
-      if (stripStatusLabel && s.operational_status_label) {
-        stripStatusLabel.textContent = s.operational_status_label;
-      }
-      if (stripHoursVal && s.operational_hours) {
-        stripHoursVal.textContent = s.operational_hours;
-      }
-      if (stripLocationVal && s.delivery_area) {
-        stripLocationVal.textContent = s.delivery_area;
-      }
-      if (stripAnnouncementVal && s.strip_announcement) {
-        stripAnnouncementVal.textContent = s.strip_announcement;
-      }
-      if (stripStatusDot && s.operational_status) {
-        stripStatusDot.classList.remove("status-closed", "status-paused");
-        if (s.operational_status === "tutup") {
-          stripStatusDot.classList.add("status-closed");
-        } else if (s.operational_status === "istirahat") {
-          stripStatusDot.classList.add("status-paused");
-        }
-      }
-      if (footerHoursVal && (s.operational_hours || s.operational_days)) {
-        const prefix = s.operational_days ? `${s.operational_days}, ` : "";
-        footerHoursVal.textContent = `${prefix}${s.operational_hours || "10.00 — 21.00 WIB"}`;
-      }
-      if (footerAreaVal && s.delivery_area) {
-        footerAreaVal.textContent = s.delivery_area;
-      }
-
-      // D. Branding (Website Logo & Browser Favicon)
-      if (s.logo_url) {
-        document.querySelectorAll(".brand-logo-img").forEach(img => {
-          img.src = s.logo_url;
-        });
-      }
-      if (s.favicon_url) {
-        document.querySelectorAll("link[rel*='icon']").forEach(link => {
-          link.href = s.favicon_url;
-        });
-      }
+    } catch (err) {
+      console.warn("[Main Public Sync] Notice sync menu:", err);
     }
   } catch (err) {
     console.info("[Siomay Online] Menggunakan konten default:", err);
   } finally {
     isSyncingBackend = false;
+    if (syncBackendNeededAgain) {
+      syncBackendNeededAgain = false;
+      debouncedSyncPublicWebsiteFromBackend();
+    }
   }
 }
 
@@ -1088,7 +1141,8 @@ function showOrderSuccessState(waUrl) {
 // =============================================================================
 // 9. GENERIC WHATSAPP LINK BINDING (For Hero, Top Strip, Footer)
 // =============================================================================
-function initWhatsAppLinks() {
+export function initWhatsAppLinks() {
+  if (typeof document === "undefined") return;
   const genericWhatsAppBtns = document.querySelectorAll('[data-cta="whatsapp-general"]');
   const genericUrl = `${getWhatsAppBaseUrl()}?text=${encodeURIComponent(CONFIG.defaultOrderMessage)}`;
 
@@ -1096,6 +1150,14 @@ function initWhatsAppLinks() {
     btn.setAttribute("href", genericUrl);
     btn.setAttribute("target", "_blank");
     btn.setAttribute("rel", "noopener noreferrer");
+
+    if (!btn._waBound) {
+      btn._waBound = true;
+      btn.addEventListener("click", () => {
+        const latestUrl = `${getWhatsAppBaseUrl()}?text=${encodeURIComponent(CONFIG.defaultOrderMessage)}`;
+        btn.setAttribute("href", latestUrl);
+      });
+    }
   });
 }
 

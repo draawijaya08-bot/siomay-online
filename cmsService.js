@@ -1085,6 +1085,13 @@ export function saveLocalSiteSettings(settings, { emitEvent = true } = {}) {
  * Fetch singleton site settings row
  */
 export async function fetchSiteSettings() {
+  const localSettings = getLocalSiteSettings();
+  const queue = getSyncQueue();
+  const pendingSettings = queue.find(a => a.type === "UPDATE_SETTINGS");
+  if (pendingSettings && pendingSettings.fullSettings) {
+    return { success: true, settings: pendingSettings.fullSettings, isLocal: true, queued: true };
+  }
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
@@ -1103,7 +1110,10 @@ export async function fetchSiteSettings() {
             console.warn("[CMS Settings] Notice parsing __OP_CONFIG__:", e);
           }
         }
-        saveLocalSiteSettings(data, { emitEvent: false });
+        const freshQueue = getSyncQueue();
+        if (!freshQueue.some(a => a.type === "UPDATE_SETTINGS")) {
+          saveLocalSiteSettings(data, { emitEvent: false });
+        }
         return { success: true, settings: data, isLive: true };
       }
     } catch (err) {
@@ -1111,7 +1121,7 @@ export async function fetchSiteSettings() {
     }
   }
 
-  return { success: true, settings: getLocalSiteSettings(), isLocal: true };
+  return { success: true, settings: localSettings, isLocal: true };
 }
 
 /**
@@ -1141,7 +1151,7 @@ export async function updateSiteSettings(settingsData) {
   }
 
   const localCurrent = getLocalSiteSettings();
-  const current = { ...DEFAULT_SITE_SETTINGS, ...localCurrent, ...(existingDbRow || {}) };
+  const current = { ...DEFAULT_SITE_SETTINGS, ...(existingDbRow || {}), ...localCurrent };
 
   const safeStr = (val, fallback = "") => {
     if (val === null || val === undefined) return fallback;
