@@ -466,14 +466,6 @@ function initPublicWebsite() {
   }
 }
 
-if (typeof document !== "undefined") {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initPublicWebsite);
-  } else {
-    initPublicWebsite();
-  }
-}
-
 /**
  * Synchronize live content from Supabase backend
  */
@@ -1281,3 +1273,15 @@ function initScrollSpy() {
 
   window.addEventListener("scroll", onScroll, { passive: true });
 }
+
+// =============================================================================
+// 14. CLIENT WEBSITE BOOTSTRAP
+// =============================================================================
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initPublicWebsite);
+  } else {
+    initPublicWebsite();
+  }
+}
+
